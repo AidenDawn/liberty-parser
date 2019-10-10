@@ -109,3 +109,48 @@ def test_parse_boolean_function():
     f_exp = ~a | b | c & d | (e ^ f) & g | (h | i)
 
     assert f_actual == f_exp
+
+
+def format_boolean_function(function: sympy.boolalg.Boolean) -> str:
+    """
+    Format a sympy boolean expression using the liberty format.
+    :param function: Sympy boolean expression.
+    :return: Formatted string.
+    """
+
+    def _format(exp) -> str:
+        if isinstance(exp, sympy.Symbol):
+            return exp.name
+        elif isinstance(exp, sympy.Not):
+            return '!{}'.format(_format(exp.args[0]))
+        elif isinstance(exp, sympy.Or):
+            return "({})".format(" + ".join([_format(a) for a in exp.args]))
+        elif isinstance(exp, sympy.And):
+            return "{}".format(" & ".join([_format(a) for a in exp.args]))
+        elif isinstance(exp, sympy.Xor):
+            return "({})".format(" ^ ".join([_format(a) for a in exp.args]))
+        else:
+            assert False, '`{}` not supported.'.format(type(exp))
+
+    s = '({})'.format(_format(function))
+
+    s.replace('~', '!')
+    s.replace(' ', '')
+    s.replace('|', '+')
+    s.replace('&', ' ')
+
+    return s
+
+
+def test_format_boolean_function():
+    a, b, c, d, e, f, g, h, i = sympy.symbols('A B C D E F G H I')
+
+    f = ~a | b | c & d | (e ^ f) & g | (h | i)
+
+    # Convert to string.
+    s = format_boolean_function(f)
+
+    # Parse again.
+    f_parsed = parse_boolean_function(s)
+
+    assert f == f_parsed
