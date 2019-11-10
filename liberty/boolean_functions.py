@@ -86,18 +86,22 @@ class BooleanFunctionTransformer(Transformer):
         return sympy.Symbol(n)
 
 
+# Singleton object of the parser.
+_liberty_parser = Lark(boolean_function_grammar,
+                       parser='lalr',
+                       lexer='standard',
+                       transformer=BooleanFunctionTransformer()
+                       )
+
+
 def parse_boolean_function(data: str):
     """
     Parse a boolean function into a sympy formula.
     :param data: String representation of boolean expression as defined in liberty format.
     :return: sympy formula
     """
-    liberty_parser = Lark(boolean_function_grammar,
-                          parser='lalr',
-                          lexer='standard',
-                          transformer=BooleanFunctionTransformer()
-                          )
-    function = liberty_parser.parse(data)
+
+    function = _liberty_parser.parse(data)
     return function
 
 
