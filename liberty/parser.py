@@ -20,7 +20,7 @@
 from lark import Lark, Transformer, v_args
 from .types import *
 
-liberty_grammar = r"""
+liberty_grammar = r'''
     ?start: group
     
     group: name argument_list group_body
@@ -52,12 +52,17 @@ liberty_grammar = r"""
     define: "define" "(" name "," name "," name ")"
     
     name : CNAME
-    string: ESCAPED_STRING
+    string: ESCAPED_STRING_MULTILINE
     
     number: SIGNED_NUMBER
     
     COMMENT: /\/\*(\*(?!\/)|[^*])*\*\//
     NEWLINE: /\\?\r?\n/
+    
+    _STRING_INNER: /.*?/
+    _STRING_ESC_INNER_MULTILINE: (_STRING_INNER | NEWLINE)+ /(?<!\\)(\\\\)*?/ 
+    
+    ESCAPED_STRING_MULTILINE : "\"" _STRING_ESC_INNER_MULTILINE "\""
     
     %import common.WORD
     %import common.ESCAPED_STRING
@@ -68,14 +73,16 @@ liberty_grammar = r"""
     %ignore WS
     %ignore COMMENT
     %ignore NEWLINE
-"""
+'''
 
 
 @v_args(inline=True)
 class LibertyTransformer(Transformer):
 
     def escaped_string(self, s):
-        return EscapedString(s[1:-1].replace('\\"', '"'))
+        s = s[1:-1].replace('\\"', '"')
+        s = s.replace('\\\n', '')
+        return EscapedString(s)
 
     def string(self, s):
         return s[:]
@@ -151,7 +158,7 @@ def parse_liberty(data: str) -> Group:
     return library
 
 
-def test_parse_liberty1():
+def test_parse_liberty_simple():
     data = r"""
 library(test) { 
   time_unit: 1ns;
@@ -169,19 +176,50 @@ library(test) {
 }
 """
     library = parse_liberty(data)
+    assert isinstance(library, Group)
+
+    # Format, parse, format and check that the result stays the same.
+    str1 = str(library)
+    library2 = parse_liberty(str1)
+    str2 = str(library2)
+    assert(str1 == str2)
 
 
-def test_parse_liberty2():
+def test_parse_liberty_with_multline():
+
+    data = r"""
+table(table_name2){ 
+    str: "asd\
+    f";
+    index_1("1, 2, 3, 4, 5, 6, 7, 8"); 
+    value("0001, 0002, 0003, 0004, \
+    0005, 0006, 0007, 0008");
+}
+"""
+    library = parse_liberty(data)
+    assert isinstance(library, Group)
+
+    str1 = str(library)
+    library2 = parse_liberty(str1)
+    str2 = str(library2)
+    assert(str1 == str2)
+
+
+def test_parse_liberty_freepdk():
     import os.path
     lib_file = os.path.join(os.path.dirname(__file__), '../test_data/gscl45nm.lib')
 
     data = open(lib_file).read()
 
     library = parse_liberty(data)
+    assert isinstance(library, Group)
 
     library_str = str(library)
     open('/tmp/lib.lib', 'w').write(library_str)
     library2 = parse_liberty(library_str)
+    assert isinstance(library2, Group)
+    library_str2 = str(library2)
+    assert(library_str == library_str2)
 
     cells = library.get_groups('cell')
 
