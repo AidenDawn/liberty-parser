@@ -298,3 +298,21 @@ def select_timing_table(pin: Group,
         return timing_group.get_group(table_name)
     else:
         raise Exception(("Table name must be one of: {}".format(list(sorted(available_table_names)))))
+        
+def get_timing_group(pin: Group,
+                     related_pin: str,
+                     when: str,
+                     timing_type: str = None) -> Optional[Group]:
+    
+    for timing_group in pin.get_groups('timing'):
+        if (timing_group.get('related_pin') == related_pin and timing_group.get('when') == when):
+            return timing_group
+    raise Exception("Cannot find timing group: get_timing_group")
+
+def get_timing_table(pin: Group,
+                     related_pin: str,
+                     when: str,
+                     table_name: str,
+                     timing_type: str = None) -> Optional[Group]:
+    timing_group = get_timing_group(pin=pin,related_pin=related_pin,when=when)
+    return timing_group.get_group(table_name)
