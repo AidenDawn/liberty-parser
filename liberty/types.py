@@ -81,6 +81,12 @@ class Group:
         def format_value(v) -> str:
             return str(v)
 
+        define_lines = list()
+        if not(self.defines == []):
+            for d in self.defines:
+                define_lines.append('define({}, {}, {})'.format(d.attribute_name,d.group_name,d.attribute_type))
+          
+          
         sub_group_lines = [g._format(indent=indent) for g in self.groups]
         attr_lines = list()
         for k, v in sorted(self.attributes.items()):
@@ -107,7 +113,7 @@ class Group:
 
         lines = list()
         lines.append("{} ({}) {{".format(self.group_name, ", ".join(self.args)))
-        for l in chain(attr_lines, *sub_group_lines):
+        for l in chain(define_lines,attr_lines, *sub_group_lines):
             lines.append(indent + l)
 
         lines.append("}")
