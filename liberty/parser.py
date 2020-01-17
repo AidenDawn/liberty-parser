@@ -103,12 +103,12 @@ class LibertyTransformer(Transformer):
         return WithUnit(num, unit)
 
     def simple_attribute(self, name, value):
-        return {name: value}
+        return Attribute(name, value)
 
     def complex_attribute(self, name, arg_list):
-        return {name: arg_list}
+        return Attribute(name, arg_list)
 
-    def define(self, attribute_name, group_name, attribute_type):
+    def define(self, attribute_name, group_name, attribute_type) -> Define:
         """
 
         :param attribute_name:
@@ -126,19 +126,18 @@ class LibertyTransformer(Transformer):
         return list(args)
 
     def group(self, group_name, group_args, body):
-        attrs = dict()
+        attrs = []
         sub_groups = []
         defines = []
         for a in body:
-            if isinstance(a, dict):
-                attrs.update(a)
+            if isinstance(a, Attribute):
+                attrs.append(a)
             elif isinstance(a, Group):
                 sub_groups.append(a)
             elif isinstance(a, Define):
                 defines.append(a)
             else:
-                print(a)
-                assert False
+                assert False, 'Unexpected type: {}'.format(a)
 
         return Group(group_name, group_args, attrs, sub_groups, defines)
 
@@ -178,15 +177,39 @@ library(test) {
     library = parse_liberty(data)
     assert isinstance(library, Group)
 
+    # Check attribute values.
+    assert library.get_attribute('simpleattr_int') == 1
+    assert library.get_attribute('complexattr') == ['a', 'b']
+
     # Format, parse, format and check that the result stays the same.
     str1 = str(library)
     library2 = parse_liberty(str1)
     str2 = str(library2)
-    assert(str1 == str2)
+    assert (str1 == str2)
+
+
+def test_parse_liberty_with_unit():
+    data = r"""
+library(test) { 
+  time_unit: 1ns;
+}
+"""
+    library = parse_liberty(data)
+    assert isinstance(library, Group)
+
+    # Check values with unit.
+    assert isinstance(library.get_attribute('time_unit'), WithUnit)
+    assert library.get_attribute('time_unit').value == 1
+    assert library.get_attribute('time_unit').unit == 'ns'
+
+    # Format, parse, format and check that the result stays the same.
+    str1 = str(library)
+    library2 = parse_liberty(str1)
+    str2 = str(library2)
+    assert (str1 == str2)
 
 
 def test_parse_liberty_with_multline():
-
     data = r"""
 table(table_name2){ 
     str: "asd\
@@ -202,7 +225,48 @@ table(table_name2){
     str1 = str(library)
     library2 = parse_liberty(str1)
     str2 = str(library2)
-    assert(str1 == str2)
+    assert (str1 == str2)
+
+
+def test_parse_liberty_with_define():
+    data = r"""
+group(test){ 
+    define (a, b, c);
+    define (x, y, z);
+}
+"""
+    library = parse_liberty(data)
+    assert isinstance(library, Group)
+    assert isinstance(library.defines[0], Define)
+    assert isinstance(library.defines[1], Define)
+
+    str1 = str(library)
+    library2 = parse_liberty(str1)
+    str2 = str(library2)
+    assert (str1 == str2)
+
+
+def test_parse_liberty_multi_complex_attributes():
+    data = r"""
+group(test){ 
+    define_group(g1, x);
+    define_group(g2, z);
+    voltage_map(VDD, 1.0);
+    voltage_map(VSS, 0.0);
+}
+"""
+    library = parse_liberty(data)
+    assert isinstance(library, Group)
+
+    # Check if `voltage_map` is parsed as expected.
+    assert library.get_attributes('voltage_map')[0] == ['VDD', 1.0]
+    assert library.get_attributes('voltage_map')[1] == ['VSS', 0.0]
+
+    str1 = str(library)
+    library2 = parse_liberty(str1)
+    assert len(library.attributes) == 4
+    str2 = str(library2)
+    assert (str1 == str2)
 
 
 def test_parse_liberty_freepdk():
@@ -219,7 +283,7 @@ def test_parse_liberty_freepdk():
     library2 = parse_liberty(library_str)
     assert isinstance(library2, Group)
     library_str2 = str(library2)
-    assert(library_str == library_str2)
+    assert (library_str == library_str2)
 
     cells = library.get_groups('cell')
 
