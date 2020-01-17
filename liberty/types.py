@@ -30,12 +30,12 @@ class Group:
                  args: List[str] = None,
                  attributes: Dict[str, Any] = None,
                  groups: List = None,
-                 defines: List[Tuple[str, str, str]] = None):
+                 defines: List = None):
         self.group_name = group_name
         self.args = args if args is not None else []
         self.attributes = attributes if attributes is not None else dict()
         self.groups = groups if groups is not None else []
-        self.defines = defines if defines is not None else []
+        self.defines: List[Define] = defines if defines is not None else []
 
     def get_groups(self, type_name: str, argument: Optional[str] = None) -> List:
         """ Get all groups of type `type_name`.
@@ -82,11 +82,9 @@ class Group:
             return str(v)
 
         define_lines = list()
-        if not(self.defines == []):
-            for d in self.defines:
-                define_lines.append('define({}, {}, {})'.format(d.attribute_name,d.group_name,d.attribute_type))
-          
-          
+        for d in self.defines:
+            define_lines.append('{};'.format(d))
+
         sub_group_lines = [g._format(indent=indent) for g in self.groups]
         attr_lines = list()
         for k, v in sorted(self.attributes.items()):
@@ -113,7 +111,7 @@ class Group:
 
         lines = list()
         lines.append("{} ({}) {{".format(self.group_name, ", ".join(self.args)))
-        for l in chain(define_lines,attr_lines, *sub_group_lines):
+        for l in chain(define_lines, attr_lines, *sub_group_lines):
             lines.append(indent + l)
 
         lines.append("}")
@@ -192,6 +190,12 @@ class Define:
         self.attribute_name = attribute_name
         self.group_name = group_name
         self.attribute_type = attribute_type
+
+    def __str__(self):
+        return 'define ({}, {}, {})'.format(self.attribute_name, self.group_name, self.attribute_type)
+
+    def __repr__(self):
+        return str(self)
 
 
 class WithUnit:
