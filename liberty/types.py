@@ -25,16 +25,47 @@ import numpy as np
 import sympy
 
 
+class Define:
+    def __init__(self, attribute_name, group_name, attribute_type):
+        """
+
+        :param attribute_name: Name of the new defined attribute.
+        :param group_name: Name of the group in which the attribute is created.
+        :param attribute_type: Data type of the attribute: boolean, string, integer or float
+        """
+
+        self.attribute_name = attribute_name
+        self.group_name = group_name
+        self.attribute_type = attribute_type
+
+    def __str__(self):
+        return 'define ({}, {}, {})'.format(self.attribute_name, self.group_name, self.attribute_type)
+
+    def __repr__(self):
+        return str(self)
+
+
+class Attribute:
+    def __init__(self, attribute_name: str, content):
+        """
+
+        :param attribute_name: Name of the attribute.
+        """
+
+        self.name = attribute_name
+        self.value = content
+
+
 class Group:
     def __init__(self, group_name: str,
                  args: List[str] = None,
-                 attributes: Dict[str, Any] = None,
+                 attributes: List = None,
                  groups: List = None,
                  defines: List = None):
-        self.group_name = group_name
-        self.args = args if args is not None else []
-        self.attributes = attributes if attributes is not None else dict()
-        self.groups = groups if groups is not None else []
+        self.group_name: str = group_name
+        self.args: List[str] = args if args is not None else []
+        self.attributes: List[Attribute] = attributes if attributes is not None else dict()
+        self.groups: List[Group] = groups if groups is not None else []
         self.defines: List[Define] = defines if defines is not None else []
 
     def get_groups(self, type_name: str, argument: Optional[str] = None) -> List:
@@ -86,14 +117,16 @@ class Group:
             define_lines.append('{};'.format(d))
 
         sub_group_lines = [g._format(indent=indent) for g in self.groups]
-        attr_lines = list()
-        for k, v in sorted(self.attributes.items()):
-            if isinstance(v, list):
-                # Complex attribute
-                formatted = [format_value(x) for x in v]
 
-                if any((isinstance(x, EscapedString) for x in v)):
-                    attr_lines.append('{} ('.format(k))
+        attr_lines = list()
+        for attr in self.attributes:
+            attr_name, attr_value = attr.name, attr.value
+            if isinstance(attr_value, list):
+                # Complex attribute
+                formatted = [format_value(x) for x in attr_value]
+
+                if any((isinstance(x, EscapedString) for x in attr_value)):
+                    attr_lines.append('{} ('.format(attr_name))
                     for i, l in enumerate(formatted):
                         if i < len(formatted) - 1:
                             end = ', \\'
@@ -103,11 +136,11 @@ class Group:
                     attr_lines.append(');')
                 else:
                     values = "({})".format(", ".join(formatted))
-                    attr_lines.append("{} {};".format(k, values))
+                    attr_lines.append("{} {};".format(attr_name, values))
             else:
                 # Simple attribute
-                values = format_value(v)
-                attr_lines.append("{}: {};".format(k, values))
+                values = format_value(attr_value)
+                attr_lines.append("{}: {};".format(attr_name, values))
 
         lines = list()
         lines.append("{} ({}) {{".format(self.group_name, ", ".join(self.args)))
@@ -118,17 +151,42 @@ class Group:
 
         return lines
 
+    def get_attributes(self, key: str) -> List[Any]:
+        """
+        Find attributes values by attribute name.
+        :param key: The name of the attribute.
+        :return: Returns a list of attribute values.
+        """
+        return [a.value for a in self.attributes if a.name == key]
+
+    def get_attribute(self, key: str, default=None) -> Any:
+        """
+        Find exactly one attribute value based on its name.
+        Raises an exception if there is no or more than one attributes with this name.
+        :param key: Name of the attribute.
+        :param default: Returns this default value if no attribute with this name is found.
+        :return: The attribute value.
+        """
+        attrs = self.get_attributes(key)
+
+        if len(attrs) == 0:
+            return default
+
+        assert len(attrs) == 1, "Expected to find exactly one attribute with name '{}'. " \
+                                "Found {}.".format(key, len(attrs))
+        return attrs[0]
+
     def __getitem__(self, item):
-        return self.attributes[item]
+        return self.get_attribute(item)
 
     def __setitem__(self, key, value):
         self.attributes[key] = value
 
     def __contains__(self, item):
-        return item in self.attributes
+        return len(self.get_attributes(item)) > 0
 
     def get(self, key, default=None):
-        return self.attributes.get(key, default)
+        return self.get_attributes(key, default)
 
     def get_array(self, key) -> np.ndarray:
         """
@@ -176,26 +234,6 @@ class CellGroup(Group):
         super().__init__("cell", args=[cell_name], attributes=attributes,
                          groups=sub_groups)
         self.name = cell_name
-
-
-class Define:
-    def __init__(self, attribute_name, group_name, attribute_type):
-        """
-
-        :param attribute_name: Name of the new defined attribute.
-        :param group_name: Name of the group in which the attribute is created.
-        :param attribute_type: Data type of the attribute: boolean, string, integer or float
-        """
-
-        self.attribute_name = attribute_name
-        self.group_name = group_name
-        self.attribute_type = attribute_type
-
-    def __str__(self):
-        return 'define ({}, {}, {})'.format(self.attribute_name, self.group_name, self.attribute_type)
-
-    def __repr__(self):
-        return str(self)
 
 
 class WithUnit:
