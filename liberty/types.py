@@ -143,7 +143,7 @@ class Group:
                 attr_lines.append("{}: {};".format(attr_name, values))
 
         lines = list()
-        lines.append("{} ({}) {{".format(self.group_name, ", ".join(self.args)))
+        lines.append("{} ({}) {{".format(self.group_name, ", ".join([format_value(f) for f in self.args])))
         for l in chain(define_lines, attr_lines, *sub_group_lines):
             lines.append(indent + l)
 
