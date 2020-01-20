@@ -46,14 +46,20 @@ class Define:
 
 
 class Attribute:
-    def __init__(self, attribute_name: str, content):
+    def __init__(self, attribute_name: str, value):
         """
 
         :param attribute_name: Name of the attribute.
         """
 
         self.name = attribute_name
-        self.value = content
+        self.value = value
+
+    def __str__(self):
+        return '{}: {}'.format(self.name, self.value)
+
+    def __repr__(self):
+        return str(self)
 
 
 class Group:
@@ -180,13 +186,13 @@ class Group:
         return self.get_attribute(item)
 
     def __setitem__(self, key, value):
-        self.attributes[key] = value
+        self.attributes.append(Attribute(key, value))
 
     def __contains__(self, item):
         return len(self.get_attributes(item)) > 0
 
     def get(self, key, default=None):
-        return self.get_attributes(key, default)
+        return self.get_attribute(key, default)
 
     def get_array(self, key) -> np.ndarray:
         """
@@ -282,7 +288,7 @@ def select_cell(library: Group, cell_name: str) -> Optional[Group]:
     if cell_name in available_cell_names:
         return library.get_group('cell', cell_name)
     else:
-        raise Exception("Cell name must be one of: {}".format(list(sorted(available_cell_names))))
+        raise KeyError("Cell name must be one of: {}".format(list(sorted(available_cell_names))))
 
 
 def select_pin(cell: Group, pin_name: str) -> Optional[Group]:
@@ -297,64 +303,119 @@ def select_pin(cell: Group, pin_name: str) -> Optional[Group]:
     if pin_name in available_pin_names:
         return cell.get_group('pin', pin_name)
     else:
-        raise Exception("Pin name must be one of: {}".format(list(sorted(available_pin_names))))
+        raise KeyError("Pin name must be one of: {}".format(list(sorted(available_pin_names))))
+
+
+def select_timing_group(pin: Group,
+                        related_pin: str,
+                        when: Optional[str] = None,
+                        timing_type: Optional[str] = None) -> Optional[Group]:
+    """
+    Select a timing group by name from a pin group.
+    :param pin:
+    :param related_pin:
+    :param when:
+    :param timing_type: Select by 'timing_type' attribute.
+    :return:
+    """
+    # Select by 'related_pin'
+    timing_groups = [g
+                     for g in pin.get_groups('timing')
+                     if 'related_pin' in g
+                     and g['related_pin'].value == related_pin
+                     ]
+
+    if not timing_groups:
+        # Notify the user what `related_pin`s could have been chosen.
+        raise KeyError(("No timing group found. Related pin name must be one of: {}".
+            format(sorted(list({
+            g['related_pin'].value
+            for g in pin.get_groups('timing')
+            if 'related_pin' in g
+        })))
+        ))
+
+    # Select by `when`.
+    if when is not None:
+        timing_groups = [g
+                         for g in timing_groups
+                         if 'when' in g
+                         and g['when'].value == when
+                         ]
+        if not timing_groups:
+            # Notify the user what `related_pin`s could have been chosen.
+            raise KeyError(("No timing group found. `when` must be one of: {}".
+                format(sorted(list({
+                g['when'].value
+                for g in timing_groups
+                if 'when' in g
+            })))
+            ))
+
+    # Select by timing_type
+    if timing_type is not None:
+        timing_groups = [g
+                         for g in timing_groups
+                         and g['timing_type'].value == timing_type
+                         ]
+        if not timing_groups:
+            # Notify the user what `timing_type`s could have been chosen.
+            raise KeyError(("No timing group found. `timing_type` must be one of: {}".
+                format(sorted(list({
+                g['timing_type'].value
+                for g in timing_groups
+            })))
+            ))
+
+    timing_group = timing_groups[0]
+    return timing_group
 
 
 def select_timing_table(pin: Group,
                         related_pin: str,
                         table_name: str,
-                        timing_type: str = None) -> Optional[Group]:
+                        when: Optional[str] = None,
+                        timing_type: Optional[str] = None) -> Optional[Group]:
     """
-    Select a timing table by name from a pin group.
+    Get a timing table by name from a pin group.
     :param pin:
     :param related_pin:
     :param table_name:
     :param timing_type: Select by 'timing_type' attribute.
     :return:
     """
-    timing_groups_by_related_pin = dict()
-    for g in pin.get_groups('timing'):
-        if 'related_pin' in g:
-            timing_groups_by_related_pin.setdefault(g['related_pin'].value, []).append(g)
 
-    # Select by 'related_pin'
-    if related_pin not in timing_groups_by_related_pin:
-        raise Exception(("Related pin name must be one of: {}".
-                         format(list(sorted(timing_groups_by_related_pin.keys())))))
-
-    timing_groups = timing_groups_by_related_pin[related_pin]
-
-    # Select by 'timing_type'
-    if timing_type is None and len(timing_groups) == 1:
-        timing_group = timing_groups[0]
-    else:
-        timing_groups_by_timing_type = {g['timing_type']: g for g in timing_groups}
-        if timing_type not in timing_groups_by_timing_type:
-            raise Exception(("'timing_type' must be one of: {}".
-                             format(list(sorted(timing_groups_by_timing_type.keys())))))
-        timing_group = timing_groups_by_timing_type[timing_type]
+    # Find timing group.
+    timing_group = select_timing_group(pin, related_pin, timing_type=timing_type, when=when)
 
     available_table_names = {g.group_name for g in timing_group.groups}
 
     if table_name in available_table_names:
         return timing_group.get_group(table_name)
     else:
-        raise Exception(("Table name must be one of: {}".format(list(sorted(available_table_names)))))
-        
+        raise KeyError(("Table name must be one of: {}".format(list(sorted(available_table_names)))))
+
+
 def get_timing_group(pin: Group,
                      related_pin: str,
                      when: str,
                      timing_type: str = None) -> Optional[Group]:
-    
+
+    #TODO: remove this function and use `select_timing_group`.
+
     for timing_group in pin.get_groups('timing'):
-        if (timing_group.get('related_pin') == related_pin and timing_group.get('when') == when):
+        if timing_group.get('related_pin') == related_pin and timing_group.get('when') == when:
             return timing_group
-    raise Exception("Cannot find timing group: get_timing_group")
+    raise KeyError("Cannot find timing group: get_timing_group")
+
 
 def get_timing_table(pin: Group,
                      related_pin: str,
                      when: str,
                      table_name: str,
                      timing_type: str = None) -> Optional[Group]:
-    timing_group = get_timing_group(pin=pin,related_pin=related_pin,when=when)
+
+    #TODO: remove this function and use `select_timing_group`.
+
+    timing_group = get_timing_group(pin=pin, related_pin=related_pin, when=when)
     return timing_group.get_group(table_name)
