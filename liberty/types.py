@@ -22,7 +22,7 @@ from itertools import chain
 from .boolean_functions import parse_boolean_function, format_boolean_function
 from .arrays import strings_to_array, array_to_strings
 import numpy as np
-import sympy
+from sympy.logic import boolalg
 
 
 class Group:
@@ -146,7 +146,7 @@ class Group:
         str_array = [EscapedString(s) for s in str_array]
         self[key] = str_array
 
-    def get_boolean_function(self, key) -> sympy.boolalg.Boolean:
+    def get_boolean_function(self, key) -> boolalg.Boolean:
         """
         Get parsed boolean expression.
         Intended for getting the value of the `function` attribute of pins.
@@ -160,7 +160,7 @@ class Group:
         f = parse_boolean_function(f_str.value)
         return f
 
-    def set_boolean_function(self, key, boolean: sympy.boolalg.Boolean):
+    def set_boolean_function(self, key, boolean: boolalg.Boolean):
         """
         Format the boolean expression and store it as an attribute with name `key`.
         :param key:

@@ -17,10 +17,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
-import numpy as np
+
 from typing import List
 from lark import Lark, Transformer, v_args
 import sympy
+from sympy.logic import boolalg
 from functools import reduce
 
 """
@@ -115,7 +116,7 @@ def test_parse_boolean_function():
     assert f_actual == f_exp
 
 
-def format_boolean_function(function: sympy.boolalg.Boolean) -> str:
+def format_boolean_function(function: boolalg.Boolean) -> str:
     """
     Format a sympy boolean expression using the liberty format.
     :param function: Sympy boolean expression.
@@ -158,3 +159,4 @@ def test_format_boolean_function():
     f_parsed = parse_boolean_function(s)
 
     assert f == f_parsed
+
