@@ -7,7 +7,7 @@ def readme():
 
 
 setup(name='liberty-parser',
-      version='0.0.5',
+      version='0.0.6',
       description='Liberty format parser.',
       long_description=readme(),
       long_description_content_type="text/markdown",
@@ -24,8 +24,8 @@ setup(name='liberty-parser',
       license='GPLv3',
       packages=find_packages(),
       install_requires=[
-          'numpy',
-          'sympy',
-          'lark-parser'
+          'numpy==1.*',
+          'sympy==1.6.*',
+          'lark-parser==0.7.*'
       ],
       zip_safe=False)
