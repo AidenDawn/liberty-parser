@@ -204,15 +204,16 @@ table(table_name2){
     assert (str1 == str2)
 
 
-def test_parse_liberty_with_multline_2():
+def test_parse_liberty_statetable_multiline():
     # From https://codeberg.org/tok/liberty-parser/issues/6
     data = r"""
-
 statetable ("CK E SE","IQ") {
-	     table : "L L L : - : L , L L H : - : H , L H L : - : H , L H H : - : H , H - - : - : N " ;
+	     table : "L L L : - : L ,\
+	              L L H : - : H ,\
+	              L H L : - : H ,\
+	              L H H : - : H ,\
+	              H - - : - : N " ;
 	}
-
-
 """
 
     library = parse_liberty(data)
