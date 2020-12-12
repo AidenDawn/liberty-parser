@@ -28,7 +28,9 @@ from sympy.logic import boolalg
 class Group:
     def __init__(self, group_name: str,
                  args: List[str] = None,
-                 attributes: Dict[str, Any] = None,
+                 # Attributes grouped by name.
+                 # For a name there can be possibly many attributes.
+                 attributes: Dict[str, List[Any]] = None,
                  groups: List = None,
                  defines: List = None):
         self.group_name = group_name
@@ -87,27 +89,28 @@ class Group:
 
         sub_group_lines = [g._format(indent=indent) for g in self.groups]
         attr_lines = list()
-        for k, v in sorted(self.attributes.items()):
-            if isinstance(v, list):
-                # Complex attribute
-                formatted = [format_value(x) for x in v]
+        for attr_name, attribute_list in sorted(self.attributes.items()):
+            for value in attribute_list:
+                if isinstance(value, list):
+                    # Complex attribute
+                    formatted = [format_value(x) for x in value]
 
-                if any((isinstance(x, EscapedString) for x in v)):
-                    attr_lines.append('{} ('.format(k))
-                    for i, l in enumerate(formatted):
-                        if i < len(formatted) - 1:
-                            end = ', \\'
-                        else:
-                            end = ''
-                        attr_lines.append(indent + l + end)
-                    attr_lines.append(');')
+                    if any((isinstance(x, EscapedString) for x in value)):
+                        attr_lines.append('{} ('.format(attr_name))
+                        for i, l in enumerate(formatted):
+                            if i < len(formatted) - 1:
+                                end = ', \\'
+                            else:
+                                end = ''
+                            attr_lines.append(indent + l + end)
+                        attr_lines.append(');')
+                    else:
+                        values = "({})".format(", ".join(formatted))
+                        attr_lines.append("{} {};".format(attr_name, values))
                 else:
-                    values = "({})".format(", ".join(formatted))
-                    attr_lines.append("{} {};".format(k, values))
-            else:
-                # Simple attribute
-                values = format_value(v)
-                attr_lines.append("{}: {};".format(k, values))
+                    # Simple attribute
+                    values = format_value(value)
+                    attr_lines.append("{}: {};".format(attr_name, values))
 
         lines = list()
         group_args = map(str, self.args)
@@ -120,16 +123,47 @@ class Group:
         return lines
 
     def __getitem__(self, item):
-        return self.attributes[item]
+        return self.get(item)
 
     def __setitem__(self, key, value):
-        self.attributes[key] = value
+        """
+        Set or overwrite an attribute.
+        :param key:
+        :param value:
+        :return:
+        """
+        self.attributes[key] = [value]
 
     def __contains__(self, item):
+        """
+        Test if there is an attribute with the given name.
+        :param item:
+        :return:
+        """
         return item in self.attributes
 
-    def get(self, key, default=None):
-        return self.attributes.get(key, default)
+    def get(self, key: str, default=None):
+        """
+        Get an attribute by name.
+        If there where multiple attributes defined with this name, then the last will be returned.
+        :param key: Name of the attribute.
+        :param default: Default attribute value. This is returned if the key does not exist.
+        :return:
+        """
+        attr = self.attributes.get(key)
+        if attr is None or len(attr) == 0:
+            return default
+        else:
+            return attr[0]
+
+    def get_attributes(self, key: str) -> List[Any]:
+        """
+        Get a list of all attributes with the given name.
+        :param key: Attribute name.
+        :return: List of all attributes with that name.
+            Returns an empty list if there's no attributes with that name.
+        """
+        return self.attributes.get(key, list())
 
     def get_array(self, key) -> np.ndarray:
         """

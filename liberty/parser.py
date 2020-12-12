@@ -131,14 +131,14 @@ class LibertyTransformer(Transformer):
         defines = []
         for a in body:
             if isinstance(a, dict):
-                attrs.update(a)
+                for key, value in a.items():
+                    attrs.setdefault(key, list()).append(value)
             elif isinstance(a, Group):
                 sub_groups.append(a)
             elif isinstance(a, Define):
                 defines.append(a)
             else:
-                print(a)
-                assert False
+                assert False, "Unexpected object type: {}".format(type(a))
 
         return Group(group_name, group_args, attrs, sub_groups, defines)
 
@@ -271,3 +271,39 @@ def test_parse_liberty_freepdk():
 
     array = timing_y_a.get_group('cell_rise').get_array('values')
     assert array.shape == (6, 6)
+
+
+def test_wire_load_model():
+    """
+    Test that multiple attributes with the same name don't overwrite eachother.
+    See: https://codeberg.org/tok/liberty-parser/issues/7
+    """
+
+    data = r"""
+    wire_load("1K_hvratio_1_4") {
+        capacitance : 1.774000e-01;
+        resistance : 3.571429e-03;
+        slope : 5.000000;
+        fanout_length( 1, 1.3207 );
+        fanout_length( 2, 2.9813 );
+        fanout_length( 3, 5.1135 );
+        fanout_length( 4, 7.6639 );
+        fanout_length( 5, 10.0334 );
+        fanout_length( 6, 12.2296 );
+        fanout_length( 8, 19.3185 );
+    }
+"""
+    wire_load = parse_liberty(data)
+    fanout_lengths = wire_load.get_attributes("fanout_length")
+    assert isinstance(fanout_lengths, list)
+    assert len(fanout_lengths) == 7
+    expected_fanoutlength = [
+        [1, 1.3207],
+        [2, 2.9813],
+        [3, 5.1135],
+        [4, 7.6639],
+        [5, 10.0334],
+        [6, 12.2296],
+        [8, 19.3185],
+    ]
+    assert fanout_lengths == expected_fanoutlength
