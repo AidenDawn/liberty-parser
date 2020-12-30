@@ -35,9 +35,14 @@ class Group:
                  defines: List = None):
         self.group_name = group_name
         self.args = args if args is not None else []
+        assert isinstance(self.args, list)
         self.attributes = attributes if attributes is not None else dict()
+        assert isinstance(self.attributes, dict)
+        assert all((isinstance(v, list) for v in self.attributes.values()))
         self.groups = groups if groups is not None else []
+        assert isinstance(self.groups, list)
         self.defines: List[Define] = defines if defines is not None else []
+        assert isinstance(self.defines, list)
 
     def get_groups(self, type_name: str, argument: Optional[str] = None) -> List:
         """ Get all groups of type `type_name`.
@@ -90,6 +95,7 @@ class Group:
         sub_group_lines = [g._format(indent=indent) for g in self.groups]
         attr_lines = list()
         for attr_name, attribute_list in sorted(self.attributes.items()):
+            assert isinstance(attribute_list, list)
             for value in attribute_list:
                 if isinstance(value, list):
                     # Complex attribute
