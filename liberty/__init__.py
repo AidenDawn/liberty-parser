@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2020 Thomas Kramer.
+# Copyright (c) 2019-2021 Thomas Kramer.
 #
 # This file is part of liberty-parser 
 # (see https://codeberg.org/tok/liberty-parser).
