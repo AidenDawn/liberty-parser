@@ -1,26 +1,27 @@
-##
-## Copyright (c) 2019 Thomas Kramer.
-## 
-## This file is part of liberty-parser 
-## (see https://codeberg.org/tok/liberty-parser).
-## 
-## This program is free software: you can redistribute it and/or modify
-## it under the terms of the GNU General Public License as published by
-## the Free Software Foundation, either version 3 of the License, or
-## (at your option) any later version.
-## 
-## This program is distributed in the hope that it will be useful,
-## but WITHOUT ANY WARRANTY; without even the implied warranty of
-## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-## GNU General Public License for more details.
-## 
-## You should have received a copy of the GNU General Public License
-## along with this program. If not, see <http://www.gnu.org/licenses/>.
-##
-import numpy as np
+#
+# Copyright (c) 2019-2021 Thomas Kramer.
+#
+# This file is part of liberty-parser 
+# (see https://codeberg.org/tok/liberty-parser).
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+
 from typing import List
 from lark import Lark, Transformer, v_args
 import sympy
+from sympy.logic import boolalg
 from functools import reduce
 
 """
@@ -115,7 +116,7 @@ def test_parse_boolean_function():
     assert f_actual == f_exp
 
 
-def format_boolean_function(function: sympy.boolalg.Boolean) -> str:
+def format_boolean_function(function: boolalg.Boolean) -> str:
     """
     Format a sympy boolean expression using the liberty format.
     :param function: Sympy boolean expression.
@@ -158,3 +159,4 @@ def test_format_boolean_function():
     f_parsed = parse_boolean_function(s)
 
     assert f == f_parsed
+

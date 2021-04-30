@@ -1,22 +1,22 @@
-##
-## Copyright (c) 2019 Thomas Kramer.
-## 
-## This file is part of liberty-parser 
-## (see https://codeberg.org/tok/liberty-parser).
-## 
-## This program is free software: you can redistribute it and/or modify
-## it under the terms of the GNU General Public License as published by
-## the Free Software Foundation, either version 3 of the License, or
-## (at your option) any later version.
-## 
-## This program is distributed in the hope that it will be useful,
-## but WITHOUT ANY WARRANTY; without even the implied warranty of
-## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-## GNU General Public License for more details.
-## 
-## You should have received a copy of the GNU General Public License
-## along with this program. If not, see <http://www.gnu.org/licenses/>.
-##
+#
+# Copyright (c) 2019-2021 Thomas Kramer.
+#
+# This file is part of liberty-parser 
+# (see https://codeberg.org/tok/liberty-parser).
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
 from lark import Lark, Transformer, v_args
 from .types import *
 
@@ -140,7 +140,7 @@ class LibertyTransformer(Transformer):
             elif isinstance(a, Define):
                 defines.append(a)
             else:
-                assert False, 'Unexpected type: {}'.format(a)
+                assert False, "Unexpected object type: {}".format(type(a))
 
         return Group(group_name, group_args, attrs, sub_groups, defines)
 
@@ -236,6 +236,27 @@ table(table_name2){
     assert (str1 == str2)
 
 
+def test_parse_liberty_statetable_multiline():
+    # From https://codeberg.org/tok/liberty-parser/issues/6
+    data = r"""
+statetable ("CK E SE","IQ") {
+	     table : "L L L : - : L ,\
+	              L L H : - : H ,\
+	              L H L : - : H ,\
+	              L H H : - : H ,\
+	              H - - : - : N " ;
+	}
+"""
+
+    library = parse_liberty(data)
+    assert isinstance(library, Group)
+
+    str1 = str(library)
+    library2 = parse_liberty(str1)
+    str2 = str(library2)
+    assert (str1 == str2)
+
+
 def test_parse_liberty_with_define():
     data = r"""
 group(test){ 
@@ -305,3 +326,39 @@ def test_parse_liberty_freepdk():
 
     array = timing_y_a.get_group('cell_rise').get_array('values')
     assert array.shape == (6, 6)
+
+
+def test_wire_load_model():
+    """
+    Test that multiple attributes with the same name don't overwrite eachother.
+    See: https://codeberg.org/tok/liberty-parser/issues/7
+    """
+
+    data = r"""
+    wire_load("1K_hvratio_1_4") {
+        capacitance : 1.774000e-01;
+        resistance : 3.571429e-03;
+        slope : 5.000000;
+        fanout_length( 1, 1.3207 );
+        fanout_length( 2, 2.9813 );
+        fanout_length( 3, 5.1135 );
+        fanout_length( 4, 7.6639 );
+        fanout_length( 5, 10.0334 );
+        fanout_length( 6, 12.2296 );
+        fanout_length( 8, 19.3185 );
+    }
+"""
+    wire_load = parse_liberty(data)
+    fanout_lengths = wire_load.get_attributes("fanout_length")
+    assert isinstance(fanout_lengths, list)
+    assert len(fanout_lengths) == 7
+    expected_fanoutlength = [
+        [1, 1.3207],
+        [2, 2.9813],
+        [3, 5.1135],
+        [4, 7.6639],
+        [5, 10.0334],
+        [6, 12.2296],
+        [8, 19.3185],
+    ]
+    assert fanout_lengths == expected_fanoutlength

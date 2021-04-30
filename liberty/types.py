@@ -1,28 +1,28 @@
-##
-## Copyright (c) 2019 Thomas Kramer.
-## 
-## This file is part of liberty-parser 
-## (see https://codeberg.org/tok/liberty-parser).
-## 
-## This program is free software: you can redistribute it and/or modify
-## it under the terms of the GNU General Public License as published by
-## the Free Software Foundation, either version 3 of the License, or
-## (at your option) any later version.
-## 
-## This program is distributed in the hope that it will be useful,
-## but WITHOUT ANY WARRANTY; without even the implied warranty of
-## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-## GNU General Public License for more details.
-## 
-## You should have received a copy of the GNU General Public License
-## along with this program. If not, see <http://www.gnu.org/licenses/>.
-##
+#
+# Copyright (c) 2019-2021 Thomas Kramer.
+#
+# This file is part of liberty-parser 
+# (see https://codeberg.org/tok/liberty-parser).
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
 from typing import Any, List, Dict, Optional, Tuple
 from itertools import chain
 from .boolean_functions import parse_boolean_function, format_boolean_function
 from .arrays import strings_to_array, array_to_strings
 import numpy as np
-import sympy
+from sympy.logic import boolalg
 
 
 class Define:
@@ -65,14 +65,26 @@ class Attribute:
 class Group:
     def __init__(self, group_name: str,
                  args: List[str] = None,
-                 attributes: List = None,
+                 attributes: List[Attribute] = None,
                  groups: List = None,
-                 defines: List = None):
-        self.group_name: str = group_name
-        self.args: List[str] = args if args is not None else []
-        self.attributes: List[Attribute] = attributes if attributes is not None else dict()
+                 defines: List[Define] = None):
         self.groups: List[Group] = groups if groups is not None else []
+
+        self.group_name = group_name
+        self.args = args if args is not None else []
+        assert isinstance(self.args, list)
+
+        self.attributes = attributes if attributes is not None else list()
+        assert isinstance(self.attributes, list)
+        assert all((isinstance(v, Attribute) for v in self.attributes))
+
+        self.groups = groups if groups is not None else []
+        assert isinstance(self.groups, list)
+        assert all((isinstance(v, Group) for v in self.groups))
+
         self.defines: List[Define] = defines if defines is not None else []
+        assert isinstance(self.defines, list)
+        assert all((isinstance(v, Define) for v in self.defines))
 
     def get_groups(self, type_name: str, argument: Optional[str] = None) -> List:
         """ Get all groups of type `type_name`.
@@ -125,6 +137,7 @@ class Group:
         sub_group_lines = [g._format(indent=indent) for g in self.groups]
 
         attr_lines = list()
+
         for attr in self.attributes:
             attr_name, attr_value = attr.name, attr.value
             if isinstance(attr_value, list):
@@ -150,6 +163,7 @@ class Group:
 
         lines = list()
         lines.append("{} ({}) {{".format(self.group_name, ", ".join([format_value(f) for f in self.args])))
+
         for l in chain(define_lines, attr_lines, *sub_group_lines):
             lines.append(indent + l)
 
@@ -209,7 +223,7 @@ class Group:
         str_array = [EscapedString(s) for s in str_array]
         self[key] = str_array
 
-    def get_boolean_function(self, key) -> sympy.boolalg.Boolean:
+    def get_boolean_function(self, key) -> boolalg.Boolean:
         """
         Get parsed boolean expression.
         Intended for getting the value of the `function` attribute of pins.
@@ -223,7 +237,7 @@ class Group:
         f = parse_boolean_function(f_str.value)
         return f
 
-    def set_boolean_function(self, key, boolean: sympy.boolalg.Boolean):
+    def set_boolean_function(self, key, boolean: boolalg.Boolean):
         """
         Format the boolean expression and store it as an attribute with name `key`.
         :param key:
@@ -235,7 +249,7 @@ class Group:
 
 class CellGroup(Group):
 
-    def __init__(self, cell_name: str, attributes: Dict[str, Any],
+    def __init__(self, cell_name: str, attributes: List[Attribute],
                  sub_groups: List[Group]):
         super().__init__("cell", args=[cell_name], attributes=attributes,
                          groups=sub_groups)
@@ -278,6 +292,7 @@ class EscapedString:
 
 class NameBitSelection:
     """Name with bit selection (e.g. ADR[32:0])"""
+
     def __init__(self, name, sel1, sel2=None):
         self.name = name
         self.sel1 = sel1
@@ -374,6 +389,7 @@ def select_timing_group(pin: Group,
     if timing_type is not None:
         timing_groups = [g
                          for g in timing_groups
+                         if 'timing_type' in g
                          and g['timing_type'].value == timing_type
                          ]
         if not timing_groups:
