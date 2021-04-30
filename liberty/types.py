@@ -171,7 +171,7 @@ class Group:
 
         return lines
 
-    def get_attributes(self, key: str) -> List[Any]:
+    def get_attributes(self, key: str) -> List[Attribute]:
         """
         Find attributes values by attribute name.
         :param key: The name of the attribute.
@@ -179,7 +179,7 @@ class Group:
         """
         return [a.value for a in self.attributes if a.name == key]
 
-    def get_attribute(self, key: str, default=None) -> Any:
+    def get_attribute(self, key: str, default=None) -> Attribute:
         """
         Find exactly one attribute value based on its name.
         Raises an exception if there is no or more than one attributes with this name.
