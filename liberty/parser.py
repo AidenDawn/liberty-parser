@@ -37,6 +37,7 @@ liberty_grammar = r'''
         | number unit -> number_with_unit
         | numbers
         | string -> escaped_string
+        | name_bit_selection
         
     numbers: "\"" [number ("," number)*] "\""
         
@@ -55,7 +56,9 @@ liberty_grammar = r'''
     string: ESCAPED_STRING_MULTILINE
     
     number: SIGNED_NUMBER
-    
+
+    name_bit_selection:  name "[" number [":"] [number] "]"
+
     COMMENT: /\/\*(\*(?!\/)|[^*])*\*\//
     NEWLINE: /\\?\r?\n/
     
@@ -141,6 +144,9 @@ class LibertyTransformer(Transformer):
 
         return Group(group_name, group_args, attrs, sub_groups, defines)
 
+    def name_bit_selection(self, *args):
+        return NameBitSelection(*args)
+
 
 def parse_liberty(data: str) -> Group:
     """
@@ -172,6 +178,8 @@ library(test) {
   simpleattr_int : 1;
   complexattr(a, b);
   define(myNewAttr, validinthisgroup, float);
+  pin(A[25]) {}
+  pin(B[32:0]) {}
 }
 """
     library = parse_liberty(data)

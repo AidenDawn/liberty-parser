@@ -276,6 +276,24 @@ class EscapedString:
             return self.value == other
 
 
+class NameBitSelection:
+    """Name with bit selection (e.g. ADR[32:0])"""
+    def __init__(self, name, sel1, sel2=None):
+        self.name = name
+        self.sel1 = sel1
+        self.sel2 = sel2
+
+    def __str__(self):
+        if self.sel2 is not None:
+            sel = "{}:{}".format(int(self.sel1), int(self.sel2))
+        else:
+            sel = int(self.sel1)
+        return "{}[{}]".format(self.name, sel)
+
+    def __repr__(self):
+        return str(self)
+
+
 def select_cell(library: Group, cell_name: str) -> Optional[Group]:
     """
     Select a cell by name from a library group.
