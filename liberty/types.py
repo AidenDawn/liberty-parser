@@ -412,9 +412,9 @@ def select_timing_table(pin: Group,
                         timing_type: Optional[str] = None) -> Optional[Group]:
     """
     Get a timing table by name from a pin group.
-    :param pin:
-    :param related_pin:
-    :param table_name:
+    :param pin: The pin group of the output pin.
+    :param related_pin: The related input pin name.
+    :param table_name: The name of the timing table. ('cell_rise', 'cell_fall', 'rise_transition', ...)
     :param timing_type: Select by 'timing_type' attribute.
     :return:
     """

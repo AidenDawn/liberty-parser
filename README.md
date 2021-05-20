@@ -58,4 +58,8 @@ This string can be converted into a Numpy array with `get_array`:
 some_group.get_array('attribute_name')
 ```
 
+## More examples
+
+Example scripts can be found under `./examples`.
+
 
