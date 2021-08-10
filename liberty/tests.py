@@ -47,3 +47,4 @@ pin(Y){
     assert timing_group['test_label'] == 3
 
     assert select_timing_table(pin_group, related_pin="A", when='!B', table_name='cell_rise')['test_label'] == 21
+

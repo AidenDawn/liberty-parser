@@ -41,7 +41,7 @@ liberty_grammar = r'''
         
     numbers: "\"" [number ("," number)*] "\""
         
-    unit: CNAME
+    unit: NAME
         
     ?attribute: simple_attribute
         | complex_attribute
@@ -52,7 +52,8 @@ liberty_grammar = r'''
     
     define: "define" "(" name "," name "," name ")"
     
-    name : CNAME
+    NAME : ("_"|LETTER) ("_"|"."|LETTER|DIGIT)*
+    name : NAME
     string: ESCAPED_STRING_MULTILINE
     
     number: SIGNED_NUMBER
@@ -69,7 +70,9 @@ liberty_grammar = r'''
     
     %import common.WORD
     %import common.ESCAPED_STRING
-    %import common.CNAME
+    %import common.DIGIT
+    %import common.LETTER
+    
     %import common.SIGNED_NUMBER
     %import common.WS
     
@@ -362,3 +365,14 @@ def test_wire_load_model():
         [8, 19.3185],
     ]
     assert fanout_lengths == expected_fanoutlength
+
+
+def test_argument_with_dot():
+    # Issue #10
+    data = r"""
+operating_conditions(ff28_1.05V_0.00V_0.00V_0.00V_125C_7y50kR){
+}    
+"""
+    group = parse_liberty(data)
+
+    assert group.args == ["ff28_1.05V_0.00V_0.00V_0.00V_125C_7y50kR"]
