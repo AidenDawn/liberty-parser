@@ -28,7 +28,7 @@ liberty_grammar = r'''
     
     argument_list: "(" [value ("," value)*] ")"
     
-    ?statement: attribute ";"
+    ?statement: attribute
         | group
         | define ";"
         
@@ -46,9 +46,9 @@ liberty_grammar = r'''
     ?attribute: simple_attribute
         | complex_attribute
         
-    simple_attribute: name ":" value
+    simple_attribute: name ":" value ";"
     
-    complex_attribute: name argument_list
+    complex_attribute: name argument_list ";"?
     
     define: "define" "(" name "," name "," name ")"
     
@@ -376,3 +376,18 @@ operating_conditions(ff28_1.05V_0.00V_0.00V_0.00V_125C_7y50kR){
     group = parse_liberty(data)
 
     assert group.args == ["ff28_1.05V_0.00V_0.00V_0.00V_125C_7y50kR"]
+
+
+def test_complex_attribute_without_semicolon():
+    # Issue #10
+    data = r"""
+library(){
+    cplxAttr1(1)
+    cplxAttr2(1, 2)
+    cplxAttr3(3);
+    cplxAttr4(4)
+}    
+"""
+    group = parse_liberty(data)
+
+    assert len(group.attributes) == 4
