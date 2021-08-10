@@ -21,7 +21,9 @@ from lark import Lark, Transformer, v_args
 from .types import *
 
 liberty_grammar = r'''
-    ?start: group
+    ?start: file
+    
+    file: group*
     
     group: name argument_list group_body
     group_body: "{" (statement)* "}"
@@ -84,6 +86,9 @@ liberty_grammar = r'''
 
 @v_args(inline=True)
 class LibertyTransformer(Transformer):
+
+    def file(self, *groups):
+        return list(groups)
 
     def escaped_string(self, s):
         s = s[1:-1].replace('\\"', '"')
@@ -154,8 +159,26 @@ class LibertyTransformer(Transformer):
 def parse_liberty(data: str) -> Group:
     """
     Parse a string containing data of a liberty file.
+    The liberty string must contain exactly one top library. If more than one top
+    should be supported then `parse_multi_liberty()` should be used instead.
+
     :param data: Raw liberty string.
     :return: `Group` object of library.
+    """
+    top_groups = parse_multi_liberty(data)
+
+    if len(top_groups) == 1:
+        return top_groups[0]
+    else:
+        raise Exception("Liberty does not contain exactly one top group. Use `parse_multi_liberty()` instead.")
+
+
+def parse_multi_liberty(data: str) -> List[Group]:
+    """
+    Parse a string containing data of a liberty file.
+    The liberty file may contain many top-level libraries.
+    :param data: Raw liberty string.
+    :return: List of `Group` objects.
     """
     liberty_parser = Lark(liberty_grammar,
                           parser='lalr',
@@ -368,6 +391,9 @@ def test_wire_load_model():
 
 
 def test_argument_with_dot():
+    """
+    Parse names with dots like `a.b`.
+    """
     # Issue #10
     data = r"""
 operating_conditions(ff28_1.05V_0.00V_0.00V_0.00V_125C_7y50kR){
@@ -379,6 +405,9 @@ operating_conditions(ff28_1.05V_0.00V_0.00V_0.00V_125C_7y50kR){
 
 
 def test_complex_attribute_without_semicolon():
+    """
+    Parse complex attributes without trailing `;`.
+    """
     # Issue #10
     data = r"""
 library(){
@@ -386,8 +415,24 @@ library(){
     cplxAttr2(1, 2)
     cplxAttr3(3);
     cplxAttr4(4)
-}    
+}
 """
     group = parse_liberty(data)
 
     assert len(group.attributes) == 4
+
+
+def test_multi_top_level_libraries():
+    """
+    Parse files with more than one top-level library.
+    """
+    # Issue #10
+    data = r"""
+library(lib1){
+}
+library(lib2){
+}
+"""
+    tops = parse_multi_liberty(data)
+    assert isinstance(tops, list)
+    assert len(tops) == 2
