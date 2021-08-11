@@ -23,6 +23,7 @@ from .boolean_functions import parse_boolean_function, format_boolean_function
 from .arrays import strings_to_array, array_to_strings
 import numpy as np
 from sympy.logic import boolalg
+import sympy
 
 
 class Define:
@@ -48,8 +49,10 @@ class Define:
 class Attribute:
     def __init__(self, attribute_name: str, value):
         """
-
         :param attribute_name: Name of the attribute.
+        :param value: Value of the attribute.
+        An attribute value can have types
+        `float`, `string`, `EscapedString`, `ArithExpression`, `WithUnit`, `NameBitSelection`, `List[float]`.
         """
 
         self.name = attribute_name
@@ -288,6 +291,25 @@ class EscapedString:
             return self.value == other.value
         else:
             return self.value == other
+
+
+class ArithExpression:
+    """
+    Arithmetic expression like `(VDD + 0.5) * 1.2`.
+    Arithmetic expressions are stored as strings.
+    """
+
+    def __init__(self, value: str):
+        self.value = value
+
+    def __str__(self):
+        return '"{}"'.format(self.value)
+
+    def __repr__(self):
+        return str(self)
+
+    def to_sympy_expression(self) -> sympy.Expr:
+        return sympy.parse_expr(self.value)
 
 
 class NameBitSelection:

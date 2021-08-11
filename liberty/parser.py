@@ -40,7 +40,11 @@ liberty_grammar = r'''
         | numbers
         | string -> escaped_string
         | name_bit_selection
+        | arithmetic_expression
         
+    ?arith_op: "*" -> op_mul | "+" -> op_add | "-" -> op_sub | "/" -> op_div
+    arithmetic_expression: ("-" name | name | number) (arith_op (name | number))+
+
     numbers: "\"" [number ("," number)*] "\""
         
     unit: NAME
@@ -104,6 +108,22 @@ class LibertyTransformer(Transformer):
 
     def number(self, s):
         return float(s)
+
+    def op_add(self):
+        return "+"
+
+    def op_sub(self):
+        return "-"
+
+    def op_mul(self):
+        return "*"
+
+    def op_div(self):
+        return "/"
+
+    def arithmetic_expression(self, *s):
+        expr_string = " ".join((f"{x}" for x in s))
+        return ArithExpression(expr_string)
 
     unit = string
     value = string
@@ -471,3 +491,29 @@ def test_define():
     assert group.defines[2].attribute_name == "g"
     assert group.defines[2].group_name == "h"
     assert group.defines[2].attribute_type == "i"
+
+
+def test_arithmetic_expressions():
+    # Issue 10
+
+    data = r"""
+    input_voltage(cmos) {
+        vil : 0.5 * VDD ;
+        vih : 0.7 * VDD ;
+        vimin : -0.5 ;
+        vimax : VDD * 1.1 + 0.5 ;
+    }
+"""
+    group = parse_liberty(data)
+    assert isinstance(group, Group)
+    assert len(group.attributes) == 4
+
+    for attr in group.attributes:
+        expr_str = attr.value
+        if not isinstance(attr.value, float):
+            assert isinstance(expr_str, ArithExpression)
+
+            expr = expr_str.to_sympy_expression()
+            print(expr)
+
+    assert group.attributes[3].value.to_sympy_expression() == sympy.parse_expr("VDD * 1.1 + 0.5")
