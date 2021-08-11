@@ -32,7 +32,7 @@ liberty_grammar = r'''
     
     ?statement: attribute
         | group
-        | define ";"
+        | define
         
     ?value: name
         | number
@@ -52,7 +52,8 @@ liberty_grammar = r'''
     
     complex_attribute: name argument_list ";"?
     
-    define: "define" "(" name "," name "," name ")"
+    define_argument: string | name
+    define: "define" "(" define_argument "," define_argument "," define_argument ")" ";"?
     
     NAME : ("_"|LETTER) ("_"|"."|LETTER|DIGIT)*
     name : NAME
@@ -118,6 +119,16 @@ class LibertyTransformer(Transformer):
 
     def complex_attribute(self, name, arg_list):
         return Attribute(name, arg_list)
+
+    def define_argument(self, arg) -> str:
+        if isinstance(arg, str):
+            # Strip quote chars.
+            if arg.startswith('"') and arg.endswith('"'):
+                return arg[1:-1]
+            else:
+                return arg
+        else:
+            return arg
 
     def define(self, attribute_name, group_name, attribute_type) -> Define:
         """
@@ -436,3 +447,27 @@ library(lib2){
     tops = parse_multi_liberty(data)
     assert isinstance(tops, list)
     assert len(tops) == 2
+
+
+def test_define():
+    # Issue #10
+    data = r"""
+    library(){
+        define ("a", "b", "c");
+        define (d, "e", f);
+        define (g, h, i)
+    }
+    """
+    group = parse_liberty(data)
+    assert isinstance(group, Group)
+    assert len(group.defines) == 3
+
+    assert group.defines[0].attribute_name == "a"
+    assert group.defines[0].group_name == "b"
+    assert group.defines[0].attribute_type == "c"
+    assert group.defines[1].attribute_name == "d"
+    assert group.defines[1].group_name == "e"
+    assert group.defines[1].attribute_type == "f"
+    assert group.defines[2].attribute_name == "g"
+    assert group.defines[2].group_name == "h"
+    assert group.defines[2].attribute_type == "i"
