@@ -36,7 +36,7 @@ liberty_grammar = r'''
         
     ?value: name
         | number
-        | number unit -> number_with_unit
+        | NUMBER_WITH_UNIT -> number_with_unit
         | numbers
         | string -> escaped_string
         | name_bit_selection
@@ -52,7 +52,7 @@ liberty_grammar = r'''
     ?attribute: simple_attribute
         | complex_attribute
         
-    simple_attribute: name ":" value ";"
+    simple_attribute: name ":" value ";"?
     
     complex_attribute: name argument_list ";"?
     
@@ -64,6 +64,7 @@ liberty_grammar = r'''
     string: ESCAPED_STRING_MULTILINE
     
     number: SIGNED_NUMBER
+    NUMBER_WITH_UNIT: SIGNED_NUMBER LETTER LETTER+
 
     name_bit_selection:  name "[" number [":"] [number] "]"
 
@@ -131,7 +132,15 @@ class LibertyTransformer(Transformer):
     def group_body(self, *args):
         return list(args)
 
-    def number_with_unit(self, num, unit):
+    def number_with_unit(self, num_unit):
+        assert isinstance(num_unit, str)
+        unit_len = 0
+        for c in reversed(num_unit):
+            if not str(c).isalpha():
+                break
+            unit_len += 1
+        unit = num_unit[-unit_len:]
+        num = float(num_unit[:-unit_len])
         return WithUnit(num, unit)
 
     def simple_attribute(self, name, value):
@@ -256,7 +265,7 @@ library(test) {
 def test_parse_liberty_with_unit():
     data = r"""
 library(test) { 
-  time_unit: 1ns;
+  time_unit: 1ns ;
 }
 """
     library = parse_liberty(data)
@@ -451,6 +460,23 @@ library(){
     group = parse_liberty(data)
 
     assert len(group.attributes) == 4
+
+
+def test_simple_attribute_without_semicolon():
+    """
+    Parse simple attributes without trailing `;`.
+    """
+    # Issue #10
+    data = r"""
+library(){
+    simpleAttr1: 1ps
+    simpleAttr2: 2;
+    simpleAttr3: 3
+}
+"""
+    group = parse_liberty(data)
+
+    assert len(group.attributes) == 3
 
 
 def test_multi_top_level_libraries():
