@@ -1,0 +1,6 @@
+pipeline:
+    build:
+        image: python
+        commands:
+            - python3 setup.py develop --user
+            - bash test.sh
