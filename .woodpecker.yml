@@ -3,6 +3,6 @@ pipeline:
         image: python
         commands:
             - pip3 install --user nose cython
-            - export PATH=%PATH:.local/bin/
+            - export PATH=$PATH:.local/bin/
             - python3 setup.py develop --user
             - bash test.sh
