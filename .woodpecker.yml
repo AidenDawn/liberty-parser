@@ -3,6 +3,7 @@ pipeline:
         image: python
         commands:
             #- pip3 install nose cython
+            - apt update
             - apt install python3-nose cython3
             - nosetests --version
             - export PATH=$PATH:$HOME/.local/bin/
