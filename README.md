@@ -62,4 +62,10 @@ some_group.get_array('attribute_name')
 
 Example scripts can be found under `./examples`.
 
+## Install for development
+
+Run the following command to install the liberty parser using symlinks. This allows to edit the parser with immediate effect on the installed package.
+```
+pip install --upgrade --editable .
+```
 
