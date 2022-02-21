@@ -64,7 +64,8 @@ liberty_grammar = r'''
     string: ESCAPED_STRING_MULTILINE
     
     number: SIGNED_NUMBER
-    NUMBER_WITH_UNIT: SIGNED_NUMBER LETTER LETTER+
+    // The unit cannot be "e" or "E" because it is used as floating-point notation.
+    NUMBER_WITH_UNIT: SIGNED_NUMBER ( ("a".."d" | "f".."z" | "A".."D" | "F".."Z") | (LETTER LETTER+) )
 
     name_bit_selection:  name "[" number [":"] [number] "]"
 
@@ -543,3 +544,35 @@ def test_arithmetic_expressions():
             print(expr)
 
     assert group.attributes[3].value.to_sympy_expression() == sympy.parse_expr("VDD * 1.1 + 0.5")
+
+def test_single_letter_units():
+    # Issue 11
+
+    data = r"""
+    test() {
+        int_value : 1V ; 
+        float_value : 2.5e-1A ;
+    }
+"""
+
+    group = parse_liberty(data)
+    assert isinstance(group, Group)
+    assert len(group.attributes) == 2
+    assert group.attributes[0].value == WithUnit(1, "V")
+    assert group.attributes[1].value == WithUnit(0.25, "A")
+
+def test_units_starting_with_E():
+    # Issue 11
+
+    data = r"""
+    test() {
+        int_value : 1eV ; 
+        float_value : 2.5e-1EV ;
+    }
+"""
+
+    group = parse_liberty(data)
+    assert isinstance(group, Group)
+    assert len(group.attributes) == 2
+    assert group.attributes[0].value == WithUnit(1, "eV")
+    assert group.attributes[1].value == WithUnit(0.25, "EV")

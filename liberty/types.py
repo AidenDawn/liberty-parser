@@ -274,6 +274,12 @@ class WithUnit:
     def __repr__(self):
         return str(self)
 
+    def __eq__(self, other):
+        if not isinstance(other, WithUnit):
+            return False
+        else:
+            return self.value == other.value and self.unit == other.unit
+
 
 class EscapedString:
 
