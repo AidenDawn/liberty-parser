@@ -223,7 +223,7 @@ def parse_multi_liberty(data: str) -> List[Group]:
     """
     liberty_parser = Lark(liberty_grammar,
                           parser='lalr',
-                          lexer='standard',
+                          #lexer='basic',
                           transformer=LibertyTransformer()
                           )
     library = liberty_parser.parse(data)
