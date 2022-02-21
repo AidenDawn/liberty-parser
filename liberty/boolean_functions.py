@@ -90,7 +90,7 @@ class BooleanFunctionTransformer(Transformer):
 # Singleton object of the parser.
 _liberty_parser = Lark(boolean_function_grammar,
                        parser='lalr',
-                       lexer='standard',
+                       #lexer='basic',
                        transformer=BooleanFunctionTransformer()
                        )
 
