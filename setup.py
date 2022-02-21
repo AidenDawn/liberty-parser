@@ -45,6 +45,6 @@ setup(name='liberty-parser',
       install_requires=[
           'numpy==1.*',
           'sympy==1.6.*',
-          'lark-parser>=0.12.1'
+          'lark>=0.12.1'
       ],
       zip_safe=False)
