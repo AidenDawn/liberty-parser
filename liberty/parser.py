@@ -62,6 +62,7 @@ liberty_grammar = r'''
     NAME : ("_"|LETTER) ("_"|"."|LETTER|DIGIT)*
     name : NAME
     string: ESCAPED_STRING_MULTILINE
+        | ("_"|LETTER) ("_"|"."|"-"|","|":"|LETTER|DIGIT)*
     
     number: SIGNED_NUMBER
     // The unit cannot be "e" or "E" because it is used as floating-point notation.
