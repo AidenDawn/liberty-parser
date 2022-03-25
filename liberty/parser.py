@@ -35,6 +35,7 @@ liberty_grammar = r'''
         | define
         
     ?value: name
+        | versionstring
         | number
         | NUMBER_WITH_UNIT -> number_with_unit
         | numbers
@@ -43,8 +44,8 @@ liberty_grammar = r'''
         | arithmetic_expression
         
     ?arith_op: "*" -> op_mul | "+" -> op_add | "-" -> op_sub | "/" -> op_div
-    arithmetic_expression: ("-" name | name | number) (arith_op (name | number))+
-
+    arithmetic_expression: (("-" name | name | number) (arith_op (name | number))+ ) | ("!" name)
+        
     numbers: "\"" [number ("," number)*] "\""
         
     unit: NAME
@@ -58,11 +59,13 @@ liberty_grammar = r'''
     
     define_argument: string | name
     define: "define" "(" define_argument "," define_argument "," define_argument ")" ";"?
+
+    ?versionstring: number number
     
-    NAME : ("_"|LETTER) ("_"|"."|LETTER|DIGIT)*
+    NAME : ("_"|LETTER) ("_"|"."|"!"|LETTER|DIGIT)*
     name : NAME
     string: ESCAPED_STRING_MULTILINE
-        | ("_"|LETTER) ("_"|"."|"-"|","|":"|LETTER|DIGIT)*
+        | ("_"|LETTER) ("_"|"."|"-"|","|":"|"!"|LETTER|DIGIT)*
     
     number: SIGNED_NUMBER
     // The unit cannot be "e" or "E" because it is used as floating-point notation.
