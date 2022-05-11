@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 Thomas Kramer
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 from .parser import parse_liberty
 from .types import *
 

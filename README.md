@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2022 Thomas Kramer
+
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
+
 # Liberty Parser
 
 This library provides functions to parse, manipulate and format 'Liberty' files.
