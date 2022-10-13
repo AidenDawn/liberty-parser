@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 Thomas Kramer
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 """
 Determine the propagation delay of a combinational cell.
 
