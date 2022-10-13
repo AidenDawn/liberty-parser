@@ -30,11 +30,11 @@ time_unit = 1e-9
 assert cap_unit_str == [1.0, 'pf']
 cap_unit = 1e-12
 
-cell_name = 'INVX1'
+cell_name = 'AND2X2'
 input_pin = 'A'
 output_pin = 'Y'
-input_rise_time = 1.0e-9  # 1 ns
-output_load = 1e-12  # 1 pF
+input_rise_time = 0.06e-9  # 0.06 ns
+output_load = 0.02e-12  # 0.02 pF
 
 # Well get the delay for a rising edge.
 timing_table_name = 'cell_rise'  # Use 'cell_fall' for falling edges.
