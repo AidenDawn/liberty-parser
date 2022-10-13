@@ -49,20 +49,20 @@ timing_table = select_timing_table(pin, related_pin=input_pin,
                                    table_name=timing_table_name)
 
 # Get indices and table data as numpy arrays.
-x_axis = timing_table.get_array('index_1')
-y_axis = timing_table.get_array('index_2')
+y_index = timing_table.get_array('index_1')
+x_index = timing_table.get_array('index_2')
 data = timing_table.get_array('values')
 
 # Find out which index is the output load and which the input slew.
 template_name = timing_table.args[0]
 template = library.get_group('lu_table_template', template_name)
 
-x_label = template['variable_1']
-y_label = template['variable_2']
+y_label = template['variable_1']
+x_label = template['variable_2']
 
 indices = {
-    x_label: x_axis,
-    y_label: y_axis
+    x_label: x_index,
+    y_label: y_index
 }
 
 assert 'total_output_net_capacitance' in indices
@@ -71,6 +71,10 @@ assert 'input_net_transition' in indices
 # Get the correct indices and convert the units into SI units (Farads and seconds).
 capacitance_index = indices['total_output_net_capacitance'] * cap_unit
 input_transition_index = indices['input_net_transition'] * time_unit
+
+# Make sure that the x-axis corresponds to the capacitance.
+if x_label != 'total_output_net_capacitance':
+    data = data.transpose()
 
 # Now we have all the data ready and can find the delay by interpolation.
 
