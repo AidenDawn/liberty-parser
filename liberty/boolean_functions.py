@@ -98,19 +98,50 @@ def parse_boolean_function(data: str):
     function = _liberty_parser.parse(data)
     return function
 
-def test_parse_constants():
-    assert parse_boolean_function("0") == False
-
-    assert parse_boolean_function("1") == True
 
 def test_parse_boolean_function():
-    f_str = "A' + B + C & D + E ^ F * G | (H + I)"
-    f_actual = parse_boolean_function(f_str)
-    a, b, c, d, e, f, g, h, i = sympy.symbols('A B C D E F G H I')
+    f_str =    a, b, c, d, e, f, g, h, i = sympy.symbols('A B C D E F G H I')
 
-    f_exp = ~a | b | c & d | (e ^ f) & g | (h | i)
-
-    assert f_actual == f_exp
+    test_vector = [
+        (
+            "0",
+            False
+        ),
+        (
+            "1",
+            True
+        ),
+        (
+            "A",
+            a
+        ),
+        (
+            "!A",
+            ~a
+        ),
+        (
+            "!    A",
+            ~a
+        ),
+        (
+            "A'",
+            ~a
+        ),
+        (
+            "(A B)'",
+            ~(a & b)
+        ),
+        (
+            "A' + B + C & D + E ^ F * G | (H + I)",
+             ~a | b | c & d | (e ^ f) & g | (h | i)
+        ),
+    ]
+    
+    for f_str, f_exp in test_vector:
+    
+        f_actual = parse_boolean_function(f_str)
+   
+        assert f_actual == f_exp
 
 
 def format_boolean_function(function: boolalg.Boolean) -> str:
