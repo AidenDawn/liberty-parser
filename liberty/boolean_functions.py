@@ -106,6 +106,7 @@ def test_parse_boolean_function():
         ( "0", False ),
         ( "1", True ),
         ( "A", a ),
+        ( "( (( A) )) ", a),
         ( "!A", ~a ),
         ( "!    A", ~a ),
         ( "A'", ~a ),
