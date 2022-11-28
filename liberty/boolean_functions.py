@@ -113,6 +113,9 @@ def test_parse_boolean_function():
         ( "A' ^ B", ~a ^ b ),
         ( "A B'", a & ~b ),
         ( "(A B)'", ~(a & b) ),
+        ( "A & B ^ C", a & (b ^ c)), # XOR before AND
+        ( "A | B ^ C", a | (b ^ c)), # XOR before OR
+        ( "A | B & C", a | (b & c)), # AND before OR
         ( "A' + B + C & D + E ^ F * G | (H + I)",
              ~a | b | c & d | (e ^ f) & g | (h | i)
         ),
@@ -121,7 +124,7 @@ def test_parse_boolean_function():
     for f_str, f_exp in test_vector:
     
         f_actual = parse_boolean_function(f_str)
-   
+        
         assert f_actual == f_exp
 
 
