@@ -112,7 +112,7 @@ def format_boolean_function(function: boolalg.Boolean) -> str:
         if isinstance(exp, sympy.Symbol):
             return exp.name
         elif isinstance(exp, sympy.Not):
-            return '!{}'.format(_format(exp.args[0]))
+            return '!({})'.format(_format(exp.args[0]))
         elif isinstance(exp, sympy.Or):
             return "({})".format(" + ".join([_format(a) for a in exp.args]))
         elif isinstance(exp, sympy.And):
@@ -145,3 +145,16 @@ def test_format_boolean_function():
 
     assert f == f_parsed
 
+
+def test_format_boolean_function_single_inverter():
+    a = sympy.symbols("A")
+    f = ~a
+    
+    assert f == parse_boolean_function(format_boolean_function(f))
+    
+def test_format_boolean_function_issue14():
+    a, b = sympy.symbols("A B")
+    f = ~(a & b)
+    
+    assert f == parse_boolean_function(format_boolean_function(f))
+    
