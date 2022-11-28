@@ -38,7 +38,9 @@ boolean_function_grammar = r"""
     ?xor_expr: atom
         | xor_expr "^" xor_expr
 
-    ?atom: CNAME -> name
+    ?atom: "0" -> constant_false
+        | "1" -> constant_true
+        | CNAME -> name
         | "!" atom -> not_expr
         | atom "'" -> not_expr
         | "(" or_expr ")"
@@ -53,7 +55,15 @@ boolean_function_grammar = r"""
 @v_args(inline=True)
 class BooleanFunctionTransformer(Transformer):
     from operator import __inv__
+    
+    def constant_false(self):
+        return boolalg.BooleanFalse()
 
+    def constant_true(self):
+        return boolalg.BooleanTrue()
+    
+    not_expr = __inv__
+    
     def or_expr(self, *exprs):
         from operator import __or__
         return reduce(__or__, exprs)
@@ -65,8 +75,6 @@ class BooleanFunctionTransformer(Transformer):
     def xor_expr(self, *exprs):
         from operator import __xor__
         return reduce(__xor__, exprs)
-
-    not_expr = __inv__
 
     def name(self, n):
         return sympy.Symbol(n)
@@ -90,6 +98,10 @@ def parse_boolean_function(data: str):
     function = _liberty_parser.parse(data)
     return function
 
+def test_parse_constants():
+    assert parse_boolean_function("0") == False
+
+    assert parse_boolean_function("1") == True
 
 def test_parse_boolean_function():
     f_str = "A' + B + C & D + E ^ F * G | (H + I)"
@@ -109,14 +121,18 @@ def format_boolean_function(function: boolalg.Boolean) -> str:
     """
 
     def _format(exp) -> str:
-        if isinstance(exp, sympy.Symbol):
+        if isinstance(exp, boolalg.BooleanFalse):
+            return "0"
+        elif isinstance(exp, boolalg.BooleanTrue):
+            return "1"
+        elif isinstance(exp, sympy.Symbol):
             return exp.name
         elif isinstance(exp, sympy.Not):
-            return '!({})'.format(_format(exp.args[0]))
+            return '!{}'.format(_format(exp.args[0]))
         elif isinstance(exp, sympy.Or):
             return "({})".format(" + ".join([_format(a) for a in exp.args]))
         elif isinstance(exp, sympy.And):
-            return "{}".format(" & ".join([_format(a) for a in exp.args]))
+            return "({})".format(" & ".join([_format(a) for a in exp.args]))
         elif isinstance(exp, sympy.Xor):
             return "({})".format(" ^ ".join([_format(a) for a in exp.args]))
         else:
@@ -134,23 +150,34 @@ def format_boolean_function(function: boolalg.Boolean) -> str:
 
 def test_format_boolean_function():
     a, b, c, d, e, f, g, h, i = sympy.symbols('A B C D E F G H I')
-
-    f = ~a | b | c & d | (e ^ f) & g | (h | i)
-
-    # Convert to string.
-    s = format_boolean_function(f)
-
-    # Parse again.
-    f_parsed = parse_boolean_function(s)
-
-    assert f == f_parsed
-
-
-def test_format_boolean_function_single_inverter():
-    a = sympy.symbols("A")
-    f = ~a
     
-    assert f == parse_boolean_function(format_boolean_function(f))
+    functions = [
+        boolalg.BooleanFalse(),
+        boolalg.BooleanTrue(),
+        a,
+        ~a,
+        a & b,
+        a | b,
+        a ^ b,
+        ~(a & b),
+        ~(a | b),
+        ~(a ^ b),
+        ~(a & ~b),
+        ~a | ~b,
+        ~(a & b) | (c & d),
+        (a & b) | (b & c) | (c & a),
+        ~a | b | c & d | (e ^ f) & g | (h | i)
+    ]
+
+    for f in functions:
+        # Convert to string.
+        s = format_boolean_function(f)
+
+        print(s)
+        # Parse again.
+        f_parsed = parse_boolean_function(s)
+
+        assert f == f_parsed
     
 def test_format_boolean_function_issue14():
     a, b = sympy.symbols("A B")
