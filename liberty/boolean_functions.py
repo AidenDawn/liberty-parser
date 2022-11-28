@@ -103,36 +103,17 @@ def test_parse_boolean_function():
     f_str =    a, b, c, d, e, f, g, h, i = sympy.symbols('A B C D E F G H I')
 
     test_vector = [
-        (
-            "0",
-            False
-        ),
-        (
-            "1",
-            True
-        ),
-        (
-            "A",
-            a
-        ),
-        (
-            "!A",
-            ~a
-        ),
-        (
-            "!    A",
-            ~a
-        ),
-        (
-            "A'",
-            ~a
-        ),
-        (
-            "(A B)'",
-            ~(a & b)
-        ),
-        (
-            "A' + B + C & D + E ^ F * G | (H + I)",
+        ( "0", False ),
+        ( "1", True ),
+        ( "A", a ),
+        ( "!A", ~a ),
+        ( "!    A", ~a ),
+        ( "A'", ~a ),
+        ( "A ^ B'", a ^ ~b ),
+        ( "A' ^ B", ~a ^ b ),
+        ( "A B'", a & ~b ),
+        ( "(A B)'", ~(a & b) ),
+        ( "A' + B + C & D + E ^ F * G | (H + I)",
              ~a | b | c & d | (e ^ f) & g | (h | i)
         ),
     ]
