@@ -12,7 +12,7 @@ def readme():
 
 
 setup(name='liberty-parser',
-      version='0.0.14',
+      version='0.0.15',
       description='Liberty format parser.',
       long_description=readme(),
       long_description_content_type="text/markdown",
