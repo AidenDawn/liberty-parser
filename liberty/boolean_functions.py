@@ -111,6 +111,8 @@ def test_parse_boolean_function():
         ( "!    A", ~a ),
         ( "A'", ~a ),
         ( "A & B", a & b ),
+        ( "!(A & B)", ~(a & b) ),
+        ( "(A & B)'", ~(a & b) ),
         ( "A B", a & b ),
         ( "A | B", a | b ),
         ( "A + B", a | b ),
