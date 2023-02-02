@@ -13,7 +13,7 @@ def array_to_strings(array: np.ndarray) -> List[str]:
     :param array:
     :return:
     """
-    array = array.astype(np.float)
+    array = array.astype(float)
     if array.ndim == 1:
         array = [array]
     return [
