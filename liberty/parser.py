@@ -48,8 +48,9 @@ liberty_grammar = r'''
 
     ?versionstring: number number
     
-    NAME : ("_"|LETTER) ("_"|"."|"!"|LETTER|DIGIT)*
+    NAME : ("_"|LETTER) ( ("_"|"."|"!"|":"|LETTER|DIGIT)* ("_"|"."|"!"|LETTER|DIGIT) )?
     name : NAME
+
     string: ESCAPED_STRING_MULTILINE
         | ("_"|LETTER) ("_"|"."|"-"|","|":"|"!"|LETTER|DIGIT)*
     
@@ -96,6 +97,9 @@ class LibertyTransformer(Transformer):
         return s[:]
 
     def name(self, s):
+        return s[:]
+    
+    def name_with_colon(self, s):
         return s[:]
 
     def number(self, s):
@@ -566,3 +570,18 @@ def test_units_starting_with_E():
     assert len(group.attributes) == 2
     assert group.attributes[0].value == WithUnit(1, "eV")
     assert group.attributes[1].value == WithUnit(0.25, "EV")
+
+def test_group_name_with_colon():
+    # Issue 15
+
+    data = r"""
+    group (name_with:colon) {
+        my_attribute : true;
+
+        attribute_with_colon:in_name: 0;
+    }    
+"""
+    group = parse_liberty(data)
+    assert isinstance(group, Group)
+
+    assert group.args[0] == "name_with:colon"
