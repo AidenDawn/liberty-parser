@@ -20,7 +20,7 @@ liberty_grammar = r'''
         | group
         | define
         
-    ?value: name
+    ?value: name_with_colon
         | versionstring
         | number
         | NUMBER_WITH_UNIT -> number_with_unit
@@ -30,7 +30,8 @@ liberty_grammar = r'''
         | arithmetic_expression
         
     ?arith_op: "*" -> op_mul | "+" -> op_add | "-" -> op_sub | "/" -> op_div
-    arithmetic_expression: (("-" name | name | number) (arith_op (name | number))+ ) | ("!" name)
+    arithmetic_expression: (("-" name_with_colon | name_with_colon | number) (arith_op (name_with_colon | number))+ )
+            | ("!" name_with_colon)
         
     numbers: "\"" [number ("," number)*] "\""
         
@@ -48,8 +49,11 @@ liberty_grammar = r'''
 
     ?versionstring: number number
     
-    NAME : ("_"|LETTER) ( ("_"|"."|"!"|":"|LETTER|DIGIT)* ("_"|"."|"!"|LETTER|DIGIT) )?
+    NAME : ("_"|LETTER) ("_"|"."|"!"|LETTER|DIGIT)* 
     name : NAME
+
+    NAME_WITH_COLON : ("_"|LETTER) ("_"|"."|"!"|LETTER|DIGIT)* ( ":" ("_"|"."|"!"|LETTER|DIGIT)+ )?
+    name_with_colon : NAME_WITH_COLON
 
     string: ESCAPED_STRING_MULTILINE
         | ("_"|LETTER) ("_"|"."|"-"|","|":"|"!"|LETTER|DIGIT)*
@@ -58,7 +62,7 @@ liberty_grammar = r'''
     // The unit cannot be "e" or "E" because it is used as floating-point notation.
     NUMBER_WITH_UNIT: SIGNED_NUMBER ( ("a".."d" | "f".."z" | "A".."D" | "F".."Z") | (LETTER LETTER+) )
 
-    name_bit_selection:  name "[" number [":"] [number] "]"
+    name_bit_selection:  name_with_colon "[" number [":"] [number] "]"
 
     COMMENT: /\/\*(\*(?!\/)|[^*])*\*\//
     NEWLINE: /\\?\r?\n/
@@ -571,14 +575,16 @@ def test_units_starting_with_E():
     assert group.attributes[0].value == WithUnit(1, "eV")
     assert group.attributes[1].value == WithUnit(0.25, "EV")
 
-def test_group_name_with_colon():
+def test_group_arguments_with_colon():
     # Issue 15
 
     data = r"""
     group (name_with:colon) {
         my_attribute : true;
 
-        attribute_with_colon:in_name: 0;
+        simple_attribute: 1;
+
+        simple_attribute_2:2;
     }    
 """
     group = parse_liberty(data)
