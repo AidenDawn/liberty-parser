@@ -284,6 +284,9 @@ class EscapedString:
         else:
             return self.value == other
 
+    def __hash__(self):
+        return hash(self.value)
+
 
 class ArithExpression:
     """
