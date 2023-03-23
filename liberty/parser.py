@@ -173,6 +173,8 @@ class LibertyTransformer(Transformer):
         #     return value
 
     def argument_list(self, *args):
+        if args == (None, ):
+            return []
         return list(args)
 
     def group(self, group_name, group_args, body):
@@ -574,6 +576,21 @@ def test_units_starting_with_E():
     assert len(group.attributes) == 2
     assert group.attributes[0].value == WithUnit(1, "eV")
     assert group.attributes[1].value == WithUnit(0.25, "EV")
+
+def test_group_without_argument():
+
+    data = r"""
+    my_group() {
+        some_attribute : "123";
+    }
+    """
+    
+    group = parse_liberty(data)
+    assert isinstance(group, Group)
+
+    print(group.args)
+
+    assert len(group.args) == 0
 
 def test_group_arguments_with_colon():
     # Issue 15
