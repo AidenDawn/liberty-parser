@@ -117,6 +117,8 @@ class Group:
         """
 
         def format_value(v) -> str:
+            if v is None:
+                return ''
             return str(v)
 
         define_lines = list()
@@ -134,12 +136,12 @@ class Group:
                 formatted = [format_value(x) for x in attr_value]
 
                 if any((isinstance(x, EscapedString) for x in attr_value)):
-                    attr_lines.append('{} ('.format(attr_name))
+                    attr_lines.append('{} ( \\'.format(attr_name))
                     for i, l in enumerate(formatted):
                         if i < len(formatted) - 1:
                             end = ', \\'
                         else:
-                            end = ''
+                            end = ' \\'
                         attr_lines.append(indent + l + end)
                     attr_lines.append(');')
                 else:
@@ -189,7 +191,23 @@ class Group:
         return self.get_attribute(item)
 
     def __setitem__(self, key, value):
+        """
+        Replace the first ocurrence of the attribute with the given value.
+        """
+        
+        for a in self.attributes:
+            if a.name == key:
+                a.value = value
+                return
+            
+        # Otherwise append a new attribute.
         self.attributes.append(Attribute(key, value))
+
+    def __delitem__(self, key):
+        """
+        Delete all attributes with the name `key`.
+        """
+        self.attributes = [attr for attr in self.attributes if attr.name != key]
 
     def __contains__(self, item):
         return len(self.get_attributes(item)) > 0
@@ -199,6 +217,7 @@ class Group:
 
     def get_array(self, key) -> np.ndarray:
         """
+        Helper function for reading array falues.
         Get a 1D or 2D array as a numpy.ndarray object.
         :param key: Name of the attribute.
         :return: ndarray
@@ -208,6 +227,11 @@ class Group:
         return strings_to_array(str_array)
 
     def set_array(self, key, value: np.ndarray):
+        """
+        Helper functions for storing array values.
+        Set the value of the attribute "key" to the given array value.
+        If attributes with the given name already exist, then the first of them will be replaced.
+        """
         str_array = array_to_strings(value)
         str_array = [EscapedString(s) for s in str_array]
         self[key] = str_array
@@ -368,6 +392,10 @@ def select_timing_group(pin: Group,
     :param timing_type: Select by 'timing_type' attribute.
     :return:
     """
+
+    assert isinstance(pin, Group)
+    assert pin.group_name == 'pin', "`pin` must be a pin-group but is '{}'".format(pin.group_name)
+    
     # Select by 'related_pin'
     timing_groups = [g
                      for g in pin.get_groups('timing')
@@ -390,7 +418,7 @@ def select_timing_group(pin: Group,
         timing_groups = [g
                          for g in timing_groups
                          if 'when' in g
-                         and g['when'].value == when
+                         and g['when'].value == when # TODO: compare equivalence of Boolean expression, not string equivalence
                          ]
         if not timing_groups:
             # Notify the user what `related_pin`s could have been chosen.
@@ -407,7 +435,7 @@ def select_timing_group(pin: Group,
         timing_groups = [g
                          for g in timing_groups
                          if 'timing_type' in g
-                         and g['timing_type'].value == timing_type
+                         and g['timing_type'] == timing_type
                          ]
         if not timing_groups:
             # Notify the user what `timing_type`s could have been chosen.

@@ -591,3 +591,17 @@ def test_group_arguments_with_colon():
     assert isinstance(group, Group)
 
     assert group.args[0] == "name_with:colon"
+
+def test_multiline_with_backslash():
+    
+    data = r"""
+    group() {
+        array ( \
+            "0, 0, 0", \
+            "0, 0, 0" \
+        );
+    }
+    """
+
+    group = parse_liberty(data)
+    assert isinstance(group, Group)
