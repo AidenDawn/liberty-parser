@@ -192,7 +192,7 @@ class Group:
 
     def __setitem__(self, key, value):
         """
-        Replace the first ocurrence of the attribute with the given value.
+        Replace the first occurrence of the attribute with the given value.
         """
         
         for a in self.attributes:
