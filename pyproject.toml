@@ -28,7 +28,7 @@ classifiers = [
 dependencies = [
   'numpy>=1.0',  # BSD
   'sympy>=1.6',  # BSD
-  'lark>=0.12.1'
+  'lark>=1.1'
 ]
 
 [project.urls]
