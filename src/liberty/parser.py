@@ -367,7 +367,7 @@ group(test){
 
 def test_parse_liberty_freepdk():
     import os.path
-    lib_file = os.path.join(os.path.dirname(__file__), '../test_data/gscl45nm.lib')
+    lib_file = os.path.join(os.path.dirname(__file__), '../../test_data/gscl45nm.lib')
 
     data = open(lib_file).read()
 
