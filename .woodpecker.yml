@@ -8,7 +8,7 @@ steps:
         commands:
             #- pip3 install nose cython
             - apt update
-            - apt install -y python3-nose python3-numpy python3-lark cython3
+            - apt install -y python3-nose python3-numpy python3-lark python3-sympy cython3
             - nosetests3 --version
             - export PATH=$PATH:$HOME/.local/bin/
             - python3 -m pip install .
