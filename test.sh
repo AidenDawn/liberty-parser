@@ -9,6 +9,6 @@ set -e
 # Run all tests in the library.
 
 # To use another python version: 
-NOSE="python $(which nosetests3)"
-#NOSE=nosetests3
+#NOSE="python $(which nosetests3)"
+NOSE=nosetests3
 $NOSE -v src/liberty/*
