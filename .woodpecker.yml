@@ -11,5 +11,5 @@ pipeline:
             - apt install -y python3-nose python3-numpy cython3
             - nosetests3 --version
             - export PATH=$PATH:$HOME/.local/bin/
-            - python3 setup.py develop --user
+            - python3 -m pip install .
             - bash test.sh
