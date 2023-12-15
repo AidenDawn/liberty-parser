@@ -4,7 +4,7 @@
 
 [project]
 name = "liberty-parser"
-version = "0.0.18"
+version = "0.0.19"
 description="Liberty format parser."
 readme = {file = "README.md", content-type="text/markdown"}
 license = {text = "GPL-3.0-or-later"}
@@ -37,7 +37,7 @@ dependencies = [
 'Issue Tracker' = 'https://codeberg.org/tok/liberty-parser/issues'
 
 [tool.setuptools.packages.find]
-where = ["liberty"]
+where = ["src"]
 
 [build-system]
 # These are the assumed default build requirements from pip:
