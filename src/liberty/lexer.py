@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2024 Thomas Kramer
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 from typing import Iterable, Callable
 

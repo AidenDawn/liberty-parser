@@ -1,6 +1,6 @@
-# SPDX-FileCopyrightText: 2023 Thomas Kramer
+# SPDX-FileCopyrightText: 2024 Thomas Kramer
 #
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 [project]
 name = "liberty-parser"
