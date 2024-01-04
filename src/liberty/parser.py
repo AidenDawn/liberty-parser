@@ -3,198 +3,17 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from lark import Lark, Transformer, v_args
 from .types import *
+from .tokenized import *
 
-liberty_grammar = r'''
-    ?start: file
-    
-    file: group*
-    
-    group: name argument_list group_body
-    group_body: "{" (statement)* "}"
-    
-    argument_list: "(" [value ("," value)*] ")"
-    
-    ?statement: attribute
-        | group
-        | define
-        
-    ?value: name_with_colon
-        | versionstring
-        | number
-        | NUMBER_WITH_UNIT -> number_with_unit
-        | numbers
-        | string -> escaped_string
-        | name_bit_selection
-        | arithmetic_expression
-        
-    ?arith_op: "*" -> op_mul | "+" -> op_add | "-" -> op_sub | "/" -> op_div
-    arithmetic_expression: (("-" name_with_colon | name_with_colon | number) (arith_op (name_with_colon | number))+ )
-            | ("!" name_with_colon)
-        
-    numbers: "\"" [number ("," number)*] "\""
-        
-    unit: NAME
-        
-    ?attribute: simple_attribute
-        | complex_attribute
-        
-    simple_attribute: name ":" value ";"?
-    
-    complex_attribute: name argument_list ";"?
-    
-    define_argument: string | name
-    define: "define" "(" define_argument "," define_argument "," define_argument ")" ";"?
+class LibertyParserError(ParserError):
+    pass
 
-    ?versionstring: number number
-    
-    NAME : ("_"|LETTER) ("_"|"."|"!"|LETTER|DIGIT)* 
-    name : NAME
+class ParseIntError(LibertyParserError):
+    pass
 
-    NAME_WITH_COLON : ("_"|LETTER) ("_"|"."|"!"|LETTER|DIGIT)* ( ":" ("_"|"."|"!"|LETTER|DIGIT)+ )?
-    name_with_colon : NAME_WITH_COLON
-
-    string: ESCAPED_STRING_MULTILINE
-        | ("_"|LETTER) ("_"|"."|"-"|","|":"|"!"|LETTER|DIGIT)*
-    
-    number: SIGNED_NUMBER
-    // The unit cannot be "e" or "E" because it is used as floating-point notation.
-    NUMBER_WITH_UNIT: SIGNED_NUMBER ( ("a".."d" | "f".."z" | "A".."D" | "F".."Z") | (LETTER LETTER+) )
-
-    name_bit_selection:  name_with_colon "[" number [":"] [number] "]"
-
-    COMMENT: /\/\*(\*(?!\/)|[^*])*\*\//
-    NEWLINE: /\\?\r?\n/
-    
-    _STRING_INNER: /.*?/
-    _STRING_ESC_INNER_MULTILINE: (_STRING_INNER | NEWLINE)+ /(?<!\\)(\\\\)*?/ 
-    
-    ESCAPED_STRING_MULTILINE : "\"" _STRING_ESC_INNER_MULTILINE "\""
-    
-    %import common.WORD
-    %import common.ESCAPED_STRING
-    %import common.DIGIT
-    %import common.LETTER
-    
-    %import common.SIGNED_NUMBER
-    %import common.WS
-    
-    %ignore WS
-    %ignore COMMENT
-    %ignore NEWLINE
-'''
-
-
-@v_args(inline=True)
-class LibertyTransformer(Transformer):
-
-    def file(self, *groups):
-        return list(groups)
-
-    def escaped_string(self, s):
-        s = s[1:-1].replace('\\"', '"')
-        s = s.replace('\\\n', '')
-        return EscapedString(s)
-
-    def string(self, s):
-        return s[:]
-
-    def name(self, s):
-        return s[:]
-    
-    def name_with_colon(self, s):
-        return s[:]
-
-    def number(self, s):
-        return float(s)
-
-    def op_add(self):
-        return "+"
-
-    def op_sub(self):
-        return "-"
-
-    def op_mul(self):
-        return "*"
-
-    def op_div(self):
-        return "/"
-
-    def arithmetic_expression(self, *s):
-        expr_string = " ".join((f"{x}" for x in s))
-        return ArithExpression(expr_string)
-
-    unit = string
-    value = string
-
-    def group_body(self, *args):
-        return list(args)
-
-    def number_with_unit(self, num_unit):
-        assert isinstance(num_unit, str)
-        unit_len = 0
-        for c in reversed(num_unit):
-            if not str(c).isalpha():
-                break
-            unit_len += 1
-        unit = num_unit[-unit_len:]
-        num = float(num_unit[:-unit_len])
-        return WithUnit(num, unit)
-
-    def simple_attribute(self, name, value):
-        return Attribute(name, value)
-
-    def complex_attribute(self, name, arg_list):
-        return Attribute(name, arg_list)
-
-    def define_argument(self, arg) -> str:
-        if isinstance(arg, str):
-            # Strip quote chars.
-            if arg.startswith('"') and arg.endswith('"'):
-                return arg[1:-1]
-            else:
-                return arg
-        else:
-            return arg
-
-    def define(self, attribute_name, group_name, attribute_type) -> Define:
-        """
-
-        :param attribute_name:
-        :param group_name:
-        :param attribute_type: boolean, string, integer or float
-        :return:
-        """
-        return Define(attribute_name, group_name, attribute_type)
-
-        # @v_args(inline=True)
-        # def value(self, value):
-        #     return value
-
-    def argument_list(self, *args):
-        if args == (None, ):
-            return []
-        return list(args)
-
-    def group(self, group_name, group_args, body):
-        attrs = []
-        sub_groups = []
-        defines = []
-        for a in body:
-            if isinstance(a, Attribute):
-                attrs.append(a)
-            elif isinstance(a, Group):
-                sub_groups.append(a)
-            elif isinstance(a, Define):
-                defines.append(a)
-            else:
-                assert False, "Unexpected object type: {}".format(type(a))
-
-        return Group(group_name, group_args, attrs, sub_groups, defines)
-
-    def name_bit_selection(self, *args):
-        return NameBitSelection(*args)
+class ParseFloatError(LibertyParserError):
+    pass
 
 
 def parse_liberty(data: str) -> Group:
@@ -211,7 +30,7 @@ def parse_liberty(data: str) -> Group:
     if len(top_groups) == 1:
         return top_groups[0]
     else:
-        raise Exception("Liberty does not contain exactly one top group. Use `parse_multi_liberty()` instead.")
+        raise LibertyParserError("Liberty does not contain exactly one top group. Use `parse_multi_liberty()` instead.")
 
 
 def parse_multi_liberty(data: str) -> List[Group]:
@@ -221,25 +40,263 @@ def parse_multi_liberty(data: str) -> List[Group]:
     :param data: Raw liberty string.
     :return: List of `Group` objects.
     """
-    liberty_parser = Lark(liberty_grammar,
-                          parser='lalr',
-                          #lexer='basic',
-                          transformer=LibertyTransformer()
-                          )
-    library = liberty_parser.parse(data)
+    library = read_liberty_chars(iter(data))
     return library
 
+def read_liberty_chars(chars: Iterable) -> List[Group]:
+    """
+    Parse liberty libraries from an iterator over characters.
+    """
+    assert isinstance(chars, Iterable)
+
+    class CountLines:
+        def __init__(self, iter):
+            self.iter = iter
+            self.line_num = 0
+            self.char_num = 0 # Position on the line.
+
+        def __iter__(self):
+            return self
+        
+        def __next__(self):
+            c = next(self.iter)
+            self.char_num += 1
+            if c == "\n":
+                self.line_num += 1
+                self.char_num = 0
+            return c
+
+    counted = CountLines(chars)
+    
+    try:
+        result = __read_liberty_impl(counted)
+    except Exception as e:
+        e.line_num = counted.line_num
+        e.char_num = counted.char_num
+
+        print("line_num = ", counted.line_num)
+        
+        raise e
+    
+    return result
+
+    
+
+def __read_liberty_impl(chars) -> List[Group]:
+    assert isinstance(chars, Iterable)
+    tk = tokenize(chars, LibertyLexer())
+    tk.advance()
+
+    groups = []
+    
+    while True:
+        item = __read_group_item(tk)
+        if not isinstance(item, Group):
+            raise LibertyParserError("library must start with a group but found:", type(item))
+        groups.append(item)
+
+        if tk.current_token_ref() is None:
+            # End of file.
+            break
+
+    return groups
+
+def __read_group_item(tk: Tokenized):
+    assert isinstance(tk, Tokenized)
+
+    name = tk.take_str()
+
+    if tk.test_str("("):
+        # Group or complex attribute.
+        args = []
+        while not tk.test_str(")"):
+            args.append(__read_value(tk))
+            if not tk.peeking_test_str(")"):
+                tk.expect_str(",")
+
+        if tk.test_str("{"):
+            # It's a group.
+
+            group = Group(name, args)
+
+            while not tk.test_str("}"):
+                # Recursively read group items.
+                item = __read_group_item(tk)
+                if isinstance(item, Group):
+                    group.groups.append(item)
+                elif isinstance(item, Attribute):
+                    group.attributes.append(item)
+                elif isinstance(item, Define):
+                    group.defines.append(item)
+                else:
+                    assert False, "unexpected type"
+
+            return group
+        else:
+            # It's a complex attribute or define statement.
+            tk.test_str(";") # Consume optional trailing semicolon.
+            if name == "define" and len(args) == 3:
+                # Define statement
+
+                # Values must be names or quoted names.
+
+                strings = []
+                for a in args:
+                    if isinstance(a, EscapedString):
+                        s = a.value
+                    else:
+                        s = str(a)
+                    strings.append(s)
+
+                attribute_name, group_name, attr_type = strings
+                
+                return Define(attribute_name, group_name, attr_type)
+            else:
+                # It's a complex attribute
+                return Attribute(name, args)
+    elif name.endswith(":") or tk.test_str(":"):
+        # Simple attribute.
+        value = __read_value(tk)
+        
+        if name.endswith(":"):
+            # Fix for supporting absence of whitespace between attribute name and colon.
+            name = name[:-1]
+
+        is_expression = value in ["(", "-", "!"] or tk.current_token_str() in ["*", "+", "-"]
+        if is_expression:
+            # Read expression. Something like `VDD * 0.5 + 0.1`.
+            expr = [str(value)]
+
+            while not tk.test_str(";"):
+                expr.append(tk.take_str())
+            
+            return Attribute(name, ArithExpression(" ".join(expr)))
+        else:
+            tk.test_str(";") # Read optional semicolon
+            return Attribute(name, value)
+    else:
+        raise UnexpectedToken("'(' | ':'", tk.current_token_str())
+
+def __read_value(tk: Tokenized):
+    assert isinstance(tk, Tokenized)
+
+    s = tk.current_token_str()
+    if not s:
+        raise UnexpectedEndOfFile()
+    
+    first_char = s[0]
+    last_char = s[-1]
+
+    if (first_char.isnumeric() or first_char == "-") and last_char.isnumeric():
+        # Read a number
+        is_int = all(c.isnumeric() for c in s[1:])
+        if is_int:
+            return __read_int(tk)
+        else:
+            return __read_float(tk)
+    if __is_number_with_unit(s):
+        return __read_number_with_unit(tk.take_str())
+    elif first_char == '"':
+        # Quoted string.
+        # Strip away the quotes.
+        without_quotes = s[1:-1]
+        tk.advance()
+        return EscapedString(without_quotes)
+    else:
+        name = tk.take_str()
+
+        if tk.test_str("["):
+            buspins = tk.take_str()
+            tk.expect_str("]")
+            buspins = buspins.split(":")
+
+            if len(buspins) == 1:
+                return NameBitSelection(name, int(buspins[0]))
+            if len(buspins) == 2:
+                return NameBitSelection(name, int(buspins[1], int(buspins[0])))
+
+        else:
+            return name
+
+def __read_int(tk: Tokenized):
+    try:
+        return int(tk.take_str())
+    except ValueError as e:
+        raise ParseIntError(e)
+    
+def __read_float(tk: Tokenized):
+    try:
+        return float(tk.take_str())
+    except ValueError as e:
+        raise ParseFloatError(e)
+
+def __read_number_with_unit(s: str):
+    try:
+        unit_len = 0
+        for c in s[::-1]:
+            if c.isalpha():
+                unit_len += 1
+            else:
+                break
+
+        num = s[:-unit_len]
+        unit = s[-unit_len:]
+
+        num = float(num)
+
+        return WithUnit(num, unit)
+    except ValueError as e:
+        raise ParseFloatError(e)
+
+def __is_number_with_unit(s: str):
+    if len(s) < 1:
+        return False
+    first = s[0]
+    if first.isnumeric() or first == "-":
+        return s[-1].isalpha()
+    else:
+        False
+
+def test_read_liberty():
+    
+    data = r"""
+    /*
+    Author: somebody
+    */
+library (myLib) {
+  time_unit : 1ns;
+  simpleattr_int : 1;
+  simpleattr_neg_int : -1;
+  simpleattr_float : -1.12e-3;
+    simple_attribute1 : value1;
+    simple_attribute2 : value2;
+    simple_attribute2 : value3;
+    complex_attribute1 (value1, "value 2");
+
+    // Single line comment // does not end here / also not here
+
+    /* comment with ** * characters */
+
+    cell (invx1) {
+        simple_attribute1 : value;
+    }
+}
+"""
+
+    result = read_liberty_chars(iter(data))
+    print(result)
+    assert isinstance(result[0], Group)
 
 def test_parse_liberty_simple():
     data = r"""
 library(test) { 
-  time_unit: 1ns;
-  string: "asdf";
+  time_unit : 1ns;
+  string : "asdf";
   mygroup(a, b) {}
   empty() {}
   somegroup(a, b, c) {
     nested_group(d, e) {
-        simpleattr_float: 1.2;
+        simpleattr_float : 1.2;
     }
   }
   simpleattr_int : 1;
@@ -261,12 +318,24 @@ library(test) {
     library2 = parse_liberty(str1)
     str2 = str(library2)
     assert (str1 == str2)
+    
+def test_parse_liberty_no_space_before_colon():
+    data = r"""
+library(test) { 
+  attr_name: value;
+  }
+"""
+    library = parse_liberty(data)
+    assert isinstance(library, Group)
+
+    # Check attribute values.
+    assert library.get_attribute('attr_name') == "value"
 
 
 def test_parse_liberty_with_unit():
     data = r"""
 library(test) { 
-  time_unit: 1ns ;
+  time_unit : 1ns ;
 }
 """
     library = parse_liberty(data)
@@ -287,7 +356,7 @@ library(test) {
 def test_parse_liberty_with_multline():
     data = r"""
 table(table_name2){ 
-    str: "asd\
+    str : "asd\
     f";
     index_1("1, 2, 3, 4, 5, 6, 7, 8"); 
     value("0001, 0002, 0003, 0004, \
@@ -470,9 +539,9 @@ def test_simple_attribute_without_semicolon():
     # Issue #10
     data = r"""
 library(){
-    simpleAttr1: 1ps
-    simpleAttr2: 2;
-    simpleAttr3: 3
+    simpleAttr1 : 1ps
+    simpleAttr2 : 2;
+    simpleAttr3 : 3
 }
 """
     group = parse_liberty(data)
@@ -599,9 +668,9 @@ def test_group_arguments_with_colon():
     group (name_with:colon) {
         my_attribute : true;
 
-        simple_attribute: 1;
+        simple_attribute : 1;
 
-        simple_attribute_2:2;
+        simple_attribute_2 : 2;
     }    
 """
     group = parse_liberty(data)

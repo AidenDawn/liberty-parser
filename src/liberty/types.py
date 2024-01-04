@@ -45,7 +45,7 @@ class Attribute:
         self.value = value
 
     def __str__(self):
-        return '{}: {}'.format(self.name, self.value)
+        return '{} : {}'.format(self.name, self.value)
 
     def __repr__(self):
         return str(self)
@@ -150,7 +150,7 @@ class Group:
             else:
                 # Simple attribute
                 values = format_value(attr_value)
-                attr_lines.append("{}: {};".format(attr_name, values))
+                attr_lines.append("{} : {};".format(attr_name, values))
 
         lines = list()
         lines.append("{} ({}) {{".format(self.group_name, ", ".join([format_value(f) for f in self.args])))
