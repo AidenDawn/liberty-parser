@@ -216,12 +216,15 @@ def __read_value(tk: Tokenized):
         if tk.test_str("["):
             buspins = tk.take_str()
             tk.expect_str("]")
-            buspins = buspins.split(":")
+            splitted = buspins.split(":")
+            print(splitted)
 
-            if len(buspins) == 1:
-                return NameBitSelection(name, int(buspins[0]))
-            if len(buspins) == 2:
-                return NameBitSelection(name, int(buspins[1], int(buspins[0])))
+            if len(splitted) == 1:
+                return NameBitSelection(name, int(splitted[0]))
+            if len(splitted) == 2:
+                return NameBitSelection(name, int(splitted[0]), int(splitted[1]))
+            else:
+                raise LibertyParserError("Invalid bus pins: {}".format(splitted))
 
         else:
             return name
@@ -312,6 +315,7 @@ library(test) {
   define(myNewAttr, validinthisgroup, float);
   pin(A[25]) {}
   pin(B[32:0]) {}
+  pin(C[0:0]) {}
 }
 """
     library = parse_liberty(data)
@@ -699,3 +703,22 @@ def test_multiline_with_backslash():
 
     group = parse_liberty(data)
     assert isinstance(group, Group)
+
+def test_invalid_bus_pins():
+
+    data = r"""
+        library () {
+
+        cell (x) {
+            pin(A[1:2:3]) {}
+        }
+    }
+    """
+
+    error = None
+    try:
+        group = parse_liberty(data)
+    except Exception as e:
+        error = e
+
+    assert error is not None
