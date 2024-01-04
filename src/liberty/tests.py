@@ -112,6 +112,20 @@ def test_select_timing_group():
     assert timing_setup_falling.get_attribute("timing_type") == "setup_falling"
     
 
+def test_library_name_begins_with_digit():
+    """
+    See https://codeberg.org/tok/liberty-parser/issues/17
+    """
+
+    data = r"""
+        library(0V95XXX) {
+        
+        }
+    """
+
+    lib = parse_liberty(data)
+    assert isinstance(lib, Group)
+    
 def test_library_name_with_minus():
     """
     See issue 18.

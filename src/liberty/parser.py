@@ -15,6 +15,15 @@ class ParseIntError(LibertyParserError):
 class ParseFloatError(LibertyParserError):
     pass
 
+class ExceptionWithLineNum(LibertyParserError):
+
+    def __init__(self, e, line_num, char_num):
+        self.e = e
+        self.line_num = line_num
+        self.char_num = char_num
+
+    def __str__(self):
+        return f"Error on line {self.line_num}, position {self.char_num}: {self.e}"
 
 def parse_liberty(data: str) -> Group:
     """
@@ -71,12 +80,7 @@ def read_liberty_chars(chars: Iterable) -> List[Group]:
     try:
         result = __read_liberty_impl(counted)
     except Exception as e:
-        e.line_num = counted.line_num
-        e.char_num = counted.char_num
-
-        print("line_num = ", counted.line_num)
-        
-        raise e
+        raise ExceptionWithLineNum(e, counted.line_num, counted.char_num)
     
     return result
 
@@ -190,10 +194,14 @@ def __read_value(tk: Tokenized):
     if (first_char.isnumeric() or first_char == "-") and last_char.isnumeric():
         # Read a number
         is_int = all(c.isnumeric() for c in s[1:])
+        s = tk.take_str()
         if is_int:
-            return __read_int(tk)
+            return __read_int(s)
         else:
-            return __read_float(tk)
+            try:
+                return __read_float(s)
+            except ParseFloatError:
+                return s
     if __is_number_with_unit(s):
         return __read_number_with_unit(tk.take_str())
     elif first_char == '"':
@@ -218,15 +226,15 @@ def __read_value(tk: Tokenized):
         else:
             return name
 
-def __read_int(tk: Tokenized):
+def __read_int(s: str):
     try:
-        return int(tk.take_str())
+        return int(s)
     except ValueError as e:
         raise ParseIntError(e)
     
-def __read_float(tk: Tokenized):
+def __read_float(s: str):
     try:
-        return float(tk.take_str())
+        return float(s)
     except ValueError as e:
         raise ParseFloatError(e)
 
@@ -246,7 +254,7 @@ def __read_number_with_unit(s: str):
 
         return WithUnit(num, unit)
     except ValueError as e:
-        raise ParseFloatError(e)
+        return s
 
 def __is_number_with_unit(s: str):
     if len(s) < 1:
