@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: CC0-1.0
 
 steps:
-    build:
+    test:
         image: python
         commands:
-            #- pip3 install nose cython
             - apt update
-            - apt install -y python3-pytest python3-numpy python3-lark python3-sympy cython3
+            - apt install -y reuse python3-pytest python3-numpy python3-lark python3-sympy cython3
             - export PATH=$PATH:$HOME/.local/bin/
             - python3 -m pip install .
             - bash test.sh
+            - reuse lint
