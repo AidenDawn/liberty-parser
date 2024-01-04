@@ -111,3 +111,17 @@ def test_select_timing_group():
     assert isinstance(timing_setup_falling, Group)
     assert timing_setup_falling.get_attribute("timing_type") == "setup_falling"
     
+
+def test_library_name_with_minus():
+    """
+    See issue 18.
+    """
+
+    data = r"""
+        library(some_lib_-10C) {
+        
+        }
+    """
+
+    lib = parse_liberty(data)
+    assert isinstance(lib, Group)

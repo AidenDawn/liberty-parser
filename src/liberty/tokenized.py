@@ -48,15 +48,21 @@ class Tokenized:
 
     def current_token_ref(self):
         if self.has_current:
-            self.current_token
+            return self.current_token
         else:
-            None
+            return None
+
+    def current_token_str(self):
+        if self.has_current:
+            return "".join(self.current_token)
+        else:
+            return None
 
     def current_token_copy(self):
         if self.has_current:
             self.current_token.copy()
         else:
-            None
+            return None
 
     def take(self):
         """
@@ -67,6 +73,13 @@ class Tokenized:
         self.advance()
         if t:
             return t
+        else:
+            return None
+
+    def take_str(self):
+        t = self.take()
+        if t is not None:
+            return "".join(t)
         else:
             return None
         
@@ -171,7 +184,8 @@ def test_tokenized():
         assert e.actual == list("here")
     assert did_raise_exception
     
-    tk.expect_str("here")
+    assert tk.test_str("here")
+    assert tk.current_token_str() == "are"
     tk.expect_str("are")
     tk.expect_str("some")
     tk.expect_str("words")

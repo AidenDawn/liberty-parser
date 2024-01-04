@@ -4,6 +4,7 @@ from typing import Iterable, Callable
 class PeekingIterator:
 
     def __init__(self, iter: Iterable):
+        assert isinstance(iter, Iterable)
         self.iter = iter
         self.has_peeked_value: bool = False
         self.peeked_value = None
@@ -43,8 +44,13 @@ def test_peekable_iter():
 class LibertyLexer:
 
     def __init__(self):
-        pass
+        self.default_terminal_chars = [',', '{', '}', '(', ')', '[', ']', ';', '/', '*']
+        self.set_default_terminal_chars()
 
+    def set_default_terminal_chars(self):
+        self.terminal_chars = self.default_terminal_chars
+        
+    
     def consume_next_token(self, iter: PeekingIterator, output_fn: Callable):
         try:
             while True:
@@ -124,10 +130,10 @@ class LibertyLexer:
             pass
 
     def _is_whitespace(self, c):
-        return c in [' ', '\t', '\n', '\r']
-
+        return c.isspace()
+    
     def _is_terminal_char(self, c):
-        return c in [',', '{', '}', '(', ')', '[', ']', ';', ':', '/', '*']
+        return c in self.terminal_chars
 
     def _read_quoted_string(self, quote_char, output_fn, iter):
         output_fn(quote_char)
