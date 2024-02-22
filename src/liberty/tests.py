@@ -156,3 +156,26 @@ def test_library_name_with_minus():
 
     lib = parse_liberty(data)
     assert isinstance(lib, Group)
+
+def test_format_multiline_string():
+    """
+    See https://codeberg.org/tok/liberty-parser/issues/19
+    """
+
+    data = r"""somegroup () {
+  table : "line 1, \
+line 2, \
+line 3";
+}"""
+    group = parse_liberty(data)
+    assert isinstance(group, Group)
+
+    expected = r"""line 1, \
+line 2, \
+line 3"""
+    assert group["table"] == expected
+
+    # Format again and check for equality with original input.
+    formatted = str(group)
+
+    assert formatted == data

@@ -139,24 +139,21 @@ class LibertyLexer:
 
     def _read_quoted_string(self, quote_char, output_fn, iter):
         output_fn(quote_char)
-
-        prev = None
-        
+      
         while True:
             c = next(iter)
-            if prev != '\\':
+            if c != '\\':
                 # Abort on umasked quote char.
                 output_fn(c)
-                if c == quote_char:
+                if iter.peek() == quote_char:
+                    # Reached closing quote char.
+                    next(iter)
+                    output_fn(quote_char)
                     break
-            else:
-                if c == '\n':
-                    # Skip quoted newline.
-                    pass
-                elif c == '\r':
-                    # Consume a following \n, if any.
-                    if iter.peek() == "\n":
-                        next(iter)
+            if c == '\\':
+                if iter.peek() == '\\':
+                    output_fn('\\')
+                    next(iter)
                 else:
                     output_fn(c)
             prev = c
