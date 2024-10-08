@@ -18,19 +18,19 @@ from liberty.parser import parse_liberty
 # Read and parse a library.
 library = parse_liberty(open(liberty_file).read())
 
-}
+
 
 # Format the library.
 print(str(library))
 
 # Loop through all cells.
 for cell_group in library.get_groups('cell'):
-    name = cell_group.args[0]
+    cell_name = cell_group.args[0]
     print(cell_name)
 
     # Loop through all pins of the cell.
-    for pin_group in library.get_groups('pin'):
-        pin_name = pin_gropu.args[0]
+    for pin_group in cell_group.get_groups('pin'):
+        pin_name = pin_group.args[0]
         print(pin_name)
 
         # Access a pin attribute.
