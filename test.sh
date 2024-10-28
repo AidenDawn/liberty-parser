@@ -8,4 +8,4 @@ set -e
 
 # Run all tests in the library.
 
-pytest src/liberty/*
+pytest src/liberty/*.py
