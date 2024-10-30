@@ -59,32 +59,8 @@ def read_liberty_chars(chars: Iterable, strict: bool = False) -> List[Group]:
     """
     assert isinstance(chars, Iterable)
 
-    class CountLines:
-        def __init__(self, iter):
-            self.iter = iter
-            self.line_num = 0
-            self.char_num = 0 # Position on the line.
-
-        def __iter__(self):
-            return self
-        
-        def __next__(self):
-            c = next(self.iter)
-            self.char_num += 1
-            if c == "\n":
-                self.line_num += 1
-                self.char_num = 0
-            return c
-
-    counted = CountLines(chars)
-    
-    try:
-        parser = LibertyParser(strict=strict)
-        result = parser._read_liberty(counted)
-    except Exception as e:
-        raise ExceptionWithLineNum(e, counted.line_num, counted.char_num)
-    
-    return result
+    parser = LibertyParser(strict=strict)
+    return parser.read_liberty_chars(chars)
 
     
 class LibertyParser:
@@ -92,9 +68,41 @@ class LibertyParser:
     def __init__(self, strict: bool = False):
         """
         # Params
-        :strict: if `True`: reject input which does not follow the liberty reference guide
+        :param strict: if `True`: reject input which does not follow the liberty reference guide
         """
         self.strict = strict
+        
+    def read_liberty_chars(self, chars: Iterable) -> List[Group]:
+        """
+        Parse liberty libraries from an iterator over characters.
+        """
+        assert isinstance(chars, Iterable)
+    
+        class CountLines:
+            def __init__(self, iter):
+                self.iter = iter
+                self.line_num = 0
+                self.char_num = 0 # Position on the line.
+    
+            def __iter__(self):
+                return self
+            
+            def __next__(self):
+                c = next(self.iter)
+                self.char_num += 1
+                if c == "\n":
+                    self.line_num += 1
+                    self.char_num = 0
+                return c
+    
+        counted = CountLines(chars)
+        
+        try:
+            result = self._read_liberty(counted)
+        except Exception as e:
+            raise ExceptionWithLineNum(e, counted.line_num, counted.char_num)
+        
+        return result
 
     def _read_liberty(self, chars) -> List[Group]:
         assert isinstance(chars, Iterable)
