@@ -110,13 +110,20 @@ def __read_group_item(tk: Tokenized):
 
     name = tk.take_str()
 
-    if tk.test_str("("):
-        # Group or complex attribute.
-        args = []
-        while not tk.test_str(")"):
-            args.append(__read_value(tk))
-            if not tk.peeking_test_str(")"):
-                tk.expect_str(",")
+    if tk.peeking_test_str("("):
+        # Allow ':' in tokens.
+        tk.lexer.disable_terminal_char(':')
+        try:
+            tk.advance()
+            # Group or complex attribute.
+            args = []
+            while not tk.test_str(")"):
+                print(tk.current_token_str())
+                args.append(__read_value(tk))
+                if not tk.peeking_test_str(")"):
+                    tk.expect_str(",")
+        finally:
+            tk.lexer.enable_terminal_char(':')
 
         if tk.test_str("{"):
             # It's a group.
@@ -158,14 +165,10 @@ def __read_group_item(tk: Tokenized):
             else:
                 # It's a complex attribute
                 return Attribute(name, args)
-    elif name.endswith(":") or tk.test_str(":"):
+    elif tk.test_str(":"):
         # Simple attribute.
         value = __read_value(tk)
         
-        if name.endswith(":"):
-            # Fix for supporting absence of whitespace between attribute name and colon.
-            name = name[:-1]
-
         is_expression = value in ["(", "-", "!"] or tk.current_token_str() in ["*", "+", "-"]
         if is_expression:
             # Read expression. Something like `VDD * 0.5 + 0.1`.
@@ -475,6 +478,14 @@ def test_parse_liberty_freepdk():
     array = timing_y_a.get_group('cell_rise').get_array('values')
     assert array.shape == (6, 6)
 
+def test_parse_liberty_openram():
+    import os.path
+    lib_file = os.path.join(os.path.dirname(__file__), '../../test_data/openram_sram_16x8_FF.lib')
+
+    data = open(lib_file).read()
+
+    library = parse_liberty(data)
+    assert isinstance(library, Group)
 
 def test_wire_load_model():
     """
@@ -703,6 +714,18 @@ def test_multiline_with_backslash():
 
     group = parse_liberty(data)
     assert isinstance(group, Group)
+
+def test_bus_pins():
+    data = r"""
+        pin(A[1:3]) {}
+    """
+    group = parse_liberty(data)
+    assert isinstance(group, Group)
+
+    assert isinstance(group.args[0], NameBitSelection)
+    assert group.args[0].sel1 == 1
+    assert group.args[0].sel2 == 3
+    
 
 def test_invalid_bus_pins():
 

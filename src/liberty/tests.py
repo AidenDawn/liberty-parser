@@ -179,3 +179,18 @@ line 3"""
     formatted = str(group)
 
     assert formatted == data
+
+
+def test_without_space_after_colon():
+    """
+    See https://codeberg.org/tok/liberty-parser/issues/21
+    """
+
+    data = r"""
+    timing(){ 
+        timing_type :"min_pulse_width"; 
+    }
+    """
+    
+    group = parse_liberty(data)
+    assert isinstance(group, Group)

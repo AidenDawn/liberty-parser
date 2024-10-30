@@ -46,12 +46,20 @@ def test_peekable_iter():
 class LibertyLexer:
 
     def __init__(self):
-        self.default_terminal_chars = [',', '{', '}', '(', ')', '[', ']', ';', '/', '*']
+        self.default_terminal_chars = bytearray(b',{}()[];/*:')
         self.set_default_terminal_chars()
 
     def set_default_terminal_chars(self):
-        self.terminal_chars = self.default_terminal_chars
+        self.terminal_chars = self.default_terminal_chars.copy()
         
+    def enable_terminal_char(self, char):
+        assert len(char) == 1
+        c = ord(char)
+        if c not in self.terminal_chars:
+            self.terminal_chars.append(c)
+
+    def disable_terminal_char(self, char):
+        self.terminal_chars.remove(ord(char))
     
     def consume_next_token(self, iter: PeekingIterator, output_fn: Callable):
         try:
@@ -135,7 +143,8 @@ class LibertyLexer:
         return c.isspace()
     
     def _is_terminal_char(self, c):
-        return c in self.terminal_chars
+        c = ord(c)
+        return c < 256 and c in self.terminal_chars
 
     def _read_quoted_string(self, quote_char, output_fn, iter):
         output_fn(quote_char)
