@@ -25,16 +25,17 @@ class ExceptionWithLineNum(LibertyParserError):
     def __str__(self):
         return f"Error on line {self.line_num}, position {self.char_num}: {self.e}"
 
-def parse_liberty(data: str) -> Group:
+def parse_liberty(data: str, strict: bool = False) -> Group:
     """
     Parse a string containing data of a liberty file.
     The liberty string must contain exactly one top library. If more than one top
     should be supported then `parse_multi_liberty()` should be used instead.
 
     :param data: Raw liberty string.
+    :param strict: True: Don't accept deviations from liberty specification. False: be more flexible and accept deviations from liberty reference.
     :return: `Group` object of library.
     """
-    top_groups = parse_multi_liberty(data)
+    top_groups = parse_multi_liberty(data, strict=strict)
 
     if len(top_groups) == 1:
         return top_groups[0]
@@ -42,17 +43,17 @@ def parse_liberty(data: str) -> Group:
         raise LibertyParserError("Liberty does not contain exactly one top group. Use `parse_multi_liberty()` instead.")
 
 
-def parse_multi_liberty(data: str) -> List[Group]:
+def parse_multi_liberty(data: str, strict: bool = False) -> List[Group]:
     """
     Parse a string containing data of a liberty file.
     The liberty file may contain many top-level libraries.
     :param data: Raw liberty string.
     :return: List of `Group` objects.
     """
-    library = read_liberty_chars(iter(data))
+    library = read_liberty_chars(iter(data), strict=strict)
     return library
 
-def read_liberty_chars(chars: Iterable) -> List[Group]:
+def read_liberty_chars(chars: Iterable, strict: bool = False) -> List[Group]:
     """
     Parse liberty libraries from an iterator over characters.
     """
@@ -78,198 +79,209 @@ def read_liberty_chars(chars: Iterable) -> List[Group]:
     counted = CountLines(chars)
     
     try:
-        result = __read_liberty_impl(counted)
+        parser = LibertyParser(strict=strict)
+        result = parser._read_liberty(counted)
     except Exception as e:
         raise ExceptionWithLineNum(e, counted.line_num, counted.char_num)
     
     return result
 
     
+class LibertyParser:
 
-def __read_liberty_impl(chars) -> List[Group]:
-    assert isinstance(chars, Iterable)
-    tk = tokenize(chars, LibertyLexer())
-    tk.advance()
+    def __init__(self, strict: bool = False):
+        """
+        # Params
+        :strict: if `True`: reject input which does not follow the liberty reference guide
+        """
+        self.strict = strict
 
-    groups = []
-    
-    while True:
-        item = __read_group_item(tk)
-        if not isinstance(item, Group):
-            raise LibertyParserError("library must start with a group but found:", type(item))
-        groups.append(item)
-
-        if tk.current_token_ref() is None:
-            # End of file.
-            break
-
-    return groups
-
-def __read_group_item(tk: Tokenized):
-    assert isinstance(tk, Tokenized)
-
-    name = tk.take_str()
-
-    if tk.peeking_test_str("("):
-        # Allow ':' in tokens.
-        tk.lexer.disable_terminal_char(':')
-        try:
-            tk.advance()
-            # Group or complex attribute.
-            args = []
-            while not tk.test_str(")"):
-                print(tk.current_token_str())
-                args.append(__read_value(tk))
-                if not tk.peeking_test_str(")"):
-                    tk.expect_str(",")
-        finally:
-            tk.lexer.enable_terminal_char(':')
-
-        if tk.test_str("{"):
-            # It's a group.
-
-            group = Group(name, args)
-
-            while not tk.test_str("}"):
-                # Recursively read group items.
-                item = __read_group_item(tk)
-                if isinstance(item, Group):
-                    group.groups.append(item)
-                elif isinstance(item, Attribute):
-                    group.attributes.append(item)
-                elif isinstance(item, Define):
-                    group.defines.append(item)
-                else:
-                    assert False, "unexpected type"
-
-            return group
-        else:
-            # It's a complex attribute or define statement.
-            tk.test_str(";") # Consume optional trailing semicolon.
-            if name == "define" and len(args) == 3:
-                # Define statement
-
-                # Values must be names or quoted names.
-
-                strings = []
-                for a in args:
-                    if isinstance(a, EscapedString):
-                        s = a.value
-                    else:
-                        s = str(a)
-                    strings.append(s)
-
-                attribute_name, group_name, attr_type = strings
-                
-                return Define(attribute_name, group_name, attr_type)
-            else:
-                # It's a complex attribute
-                return Attribute(name, args)
-    elif tk.test_str(":"):
-        # Simple attribute.
-        value = __read_value(tk)
-        
-        is_expression = value in ["(", "-", "!"] or tk.current_token_str() in ["*", "+", "-"]
-        if is_expression:
-            # Read expression. Something like `VDD * 0.5 + 0.1`.
-            expr = [str(value)]
-
-            while not tk.test_str(";"):
-                expr.append(tk.take_str())
-            
-            return Attribute(name, ArithExpression(" ".join(expr)))
-        else:
-            tk.test_str(";") # Read optional semicolon
-            return Attribute(name, value)
-    else:
-        raise UnexpectedToken("'(' | ':'", tk.current_token_str())
-
-def __read_value(tk: Tokenized):
-    assert isinstance(tk, Tokenized)
-
-    s = tk.current_token_str()
-    if not s:
-        raise UnexpectedEndOfFile()
-    
-    first_char = s[0]
-    last_char = s[-1]
-
-    if (first_char.isnumeric() or first_char == "-") and last_char.isnumeric():
-        # Read a number
-        is_int = all(c.isnumeric() for c in s[1:])
-        s = tk.take_str()
-        if is_int:
-            return __read_int(s)
-        else:
-            try:
-                return __read_float(s)
-            except ParseFloatError:
-                return s
-    if __is_number_with_unit(s):
-        return __read_number_with_unit(tk.take_str())
-    elif first_char == '"':
-        # Quoted string.
-        # Strip away the quotes.
-        without_quotes = s[1:-1]
+    def _read_liberty(self, chars) -> List[Group]:
+        assert isinstance(chars, Iterable)
+        tk = tokenize(chars, LibertyLexer())
         tk.advance()
-        return EscapedString(without_quotes)
-    else:
-        name = tk.take_str()
-
-        if tk.test_str("["):
-            buspins = tk.take_str()
-            tk.expect_str("]")
-            splitted = buspins.split(":")
-            print(splitted)
-
-            if len(splitted) == 1:
-                return NameBitSelection(name, int(splitted[0]))
-            if len(splitted) == 2:
-                return NameBitSelection(name, int(splitted[0]), int(splitted[1]))
-            else:
-                raise LibertyParserError("Invalid bus pins: {}".format(splitted))
-
-        else:
-            return name
-
-def __read_int(s: str):
-    try:
-        return int(s)
-    except ValueError as e:
-        raise ParseIntError(e)
     
-def __read_float(s: str):
-    try:
-        return float(s)
-    except ValueError as e:
-        raise ParseFloatError(e)
-
-def __read_number_with_unit(s: str):
-    try:
-        unit_len = 0
-        for c in s[::-1]:
-            if c.isalpha():
-                unit_len += 1
-            else:
+        groups = []
+        
+        while True:
+            item = self.__read_group_item(tk)
+            if not isinstance(item, Group):
+                raise LibertyParserError("library must start with a group but found:", type(item))
+            groups.append(item)
+    
+            if tk.current_token_ref() is None:
+                # End of file.
                 break
+    
+        return groups
+    
+    def __read_group_item(self, tk: Tokenized):
+        assert isinstance(tk, Tokenized)
+    
+        name = tk.take_str()
+    
+        if tk.peeking_test_str("("):
+            # Allow ':' in tokens.
+            if not self.strict:
+                tk.lexer.disable_terminal_char(':')
+            try:
+                tk.advance()
+                # Group or complex attribute.
+                args = []
+                while not tk.test_str(")"):
+                    print(tk.current_token_str())
+                    args.append(self.__read_value(tk))
+                    if not tk.peeking_test_str(")"):
+                        tk.expect_str(",")
+            finally:
+                if not self.strict:
+                    tk.lexer.enable_terminal_char(':')
+    
+            if tk.test_str("{"):
+                # It's a group.
+    
+                group = Group(name, args)
+    
+                while not tk.test_str("}"):
+                    # Recursively read group items.
+                    item = self.__read_group_item(tk)
+                    if isinstance(item, Group):
+                        group.groups.append(item)
+                    elif isinstance(item, Attribute):
+                        group.attributes.append(item)
+                    elif isinstance(item, Define):
+                        group.defines.append(item)
+                    else:
+                        assert False, "unexpected type"
+    
+                return group
+            else:
+                # It's a complex attribute or define statement.
+                tk.test_str(";") # Consume optional trailing semicolon.
+                if name == "define" and len(args) == 3:
+                    # Define statement
+    
+                    # Values must be names or quoted names.
+    
+                    strings = []
+                    for a in args:
+                        if isinstance(a, EscapedString):
+                            s = a.value
+                        else:
+                            s = str(a)
+                        strings.append(s)
+    
+                    attribute_name, group_name, attr_type = strings
+                    
+                    return Define(attribute_name, group_name, attr_type)
+                else:
+                    # It's a complex attribute
+                    return Attribute(name, args)
+        elif tk.test_str(":"):
+            # Simple attribute.
+            value = self.__read_value(tk)
+            
+            is_expression = value in ["(", "-", "!"] or tk.current_token_str() in ["*", "+", "-"]
+            if is_expression:
+                # Read expression. Something like `VDD * 0.5 + 0.1`.
+                expr = [str(value)]
+    
+                while not tk.test_str(";"):
+                    expr.append(tk.take_str())
+                
+                return Attribute(name, ArithExpression(" ".join(expr)))
+            else:
+                tk.test_str(";") # Read optional semicolon
+                return Attribute(name, value)
+        else:
+            raise UnexpectedToken("'(' | ':'", tk.current_token_str())
+    
+    def __read_value(self, tk: Tokenized):
+        assert isinstance(tk, Tokenized)
+    
+        s = tk.current_token_str()
+        if not s:
+            raise UnexpectedEndOfFile()
+        
+        first_char = s[0]
+        last_char = s[-1]
+    
+        if (first_char.isnumeric() or first_char == "-") and last_char.isnumeric():
+            # Read a number
+            is_int = all(c.isnumeric() for c in s[1:])
+            s = tk.take_str()
+            if is_int:
+                return self.__read_int(s)
+            else:
+                try:
+                    return self.__read_float(s)
+                except ParseFloatError:
+                    return s
+        if self.__is_number_with_unit(s):
+            return self.__read_number_with_unit(tk.take_str())
+        elif first_char == '"':
+            # Quoted string.
+            # Strip away the quotes.
+            without_quotes = s[1:-1]
+            tk.advance()
+            return EscapedString(without_quotes)
+        else:
+            name = tk.take_str()
+    
+            if tk.test_str("["):
+                buspins = tk.take_str()
+                tk.expect_str("]")
+                splitted = buspins.split(":")
+                print(splitted)
+    
+                if len(splitted) == 1:
+                    return NameBitSelection(name, int(splitted[0]))
+                if len(splitted) == 2:
+                    return NameBitSelection(name, int(splitted[0]), int(splitted[1]))
+                else:
+                    raise LibertyParserError("Invalid bus pins: {}".format(splitted))
+    
+            else:
+                return name
+    
+    def __read_int(self, s: str):
+        try:
+            return int(s)
+        except ValueError as e:
+            raise ParseIntError(e)
+        
+    def __read_float(self, s: str):
+        try:
+            return float(s)
+        except ValueError as e:
+            raise ParseFloatError(e)
+    
+    def __read_number_with_unit(self, s: str):
+        try:
+            unit_len = 0
+            for c in s[::-1]:
+                if c.isalpha():
+                    unit_len += 1
+                else:
+                    break
+    
+            num = s[:-unit_len]
+            unit = s[-unit_len:]
+    
+            num = float(num)
+    
+            return WithUnit(num, unit)
+        except ValueError as e:
+            return s
 
-        num = s[:-unit_len]
-        unit = s[-unit_len:]
-
-        num = float(num)
-
-        return WithUnit(num, unit)
-    except ValueError as e:
-        return s
-
-def __is_number_with_unit(s: str):
-    if len(s) < 1:
-        return False
-    first = s[0]
-    if first.isnumeric() or first == "-":
-        return s[-1].isalpha()
-    else:
-        False
+    def __is_number_with_unit(self, s: str):
+        if len(s) < 1:
+            return False
+        first = s[0]
+        if first.isnumeric() or first == "-":
+            return s[-1].isalpha()
+        else:
+            False
 
 def test_read_liberty():
     
