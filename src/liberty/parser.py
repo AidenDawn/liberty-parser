@@ -106,7 +106,14 @@ class LibertyParser:
 
     def _read_liberty(self, chars) -> List[Group]:
         assert isinstance(chars, Iterable)
-        tk = tokenize(chars, LibertyLexer())
+        lexer = LibertyLexer()
+
+        if self.strict:
+            lexer.disable_terminal_char(":")
+        else:
+            lexer.enable_terminal_char(":")
+            
+        tk = tokenize(chars, lexer)
         tk.advance()
     
         groups = []
@@ -360,7 +367,13 @@ library(test) {
   attr_name: value;
   }
 """
-    library = parse_liberty(data)
+    try:
+        library = parse_liberty(data, strict=True)
+        assert False, "should throw an exception before"
+    except:
+        pass
+    
+    library = parse_liberty(data, strict=False)
     assert isinstance(library, Group)
 
     # Check attribute values.
