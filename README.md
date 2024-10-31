@@ -9,6 +9,28 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 This library provides functions to parse, manipulate and format 'Liberty' files.
 The liberty format is a common standard to describe certain aspects of standard-cell libraries such as timing, power, cell pin types, etc.
 
+
+## Install
+
+Install from PyPI:
+```
+pip install liberty-parser
+```
+
+Install from git with pip:
+```
+pip install git+https://codeberg.org/tok/liberty-parser
+```
+
+## Install for development
+
+Run the following command to install the liberty parser using symlinks. This allows to edit the parser with immediate effect on the installed package.
+```
+git clone https://codeberg.org/tok/liberty-parser
+cd liberty-parser
+pip install --upgrade --editable .
+```
+
 ## Example
 
 
@@ -68,10 +90,4 @@ some_group.get_array('attribute_name')
 
 Example scripts can be found under `./examples`.
 
-## Install for development
-
-Run the following command to install the liberty parser using symlinks. This allows to edit the parser with immediate effect on the installed package.
-```
-pip install --upgrade --editable .
-```
 
