@@ -194,3 +194,22 @@ def test_without_space_after_colon():
     
     group = parse_liberty(data)
     assert isinstance(group, Group)
+
+def test_two_dimensional_bus_pins():
+    """
+    See: https://codeberg.org/tok/liberty-parser/issues/22
+    """
+
+    data = r"""
+    library(test) {
+        cell(somecell) {
+            pin("x_if[0].y[0]") {
+                content: asdf ;
+            }
+        }
+    }
+    """
+
+    group = parse_liberty(data)
+    assert isinstance(group, Group)
+
