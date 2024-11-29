@@ -118,7 +118,6 @@ def __read_group_item(tk: Tokenized):
             # Group or complex attribute.
             args = []
             while not tk.test_str(")"):
-                print(tk.current_token_str())
                 args.append(__read_value(tk))
                 if not tk.peeking_test_str(")"):
                     tk.expect_str(",")
@@ -220,7 +219,6 @@ def __read_value(tk: Tokenized):
             buspins = tk.take_str()
             tk.expect_str("]")
             splitted = buspins.split(":")
-            print(splitted)
 
             if len(splitted) == 1:
                 return NameBitSelection(name, int(splitted[0]))
