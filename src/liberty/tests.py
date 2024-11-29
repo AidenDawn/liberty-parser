@@ -203,9 +203,8 @@ def test_two_dimensional_bus_pins():
     data = r"""
     library(test) {
         cell(somecell) {
-            pin("x_if[0].y[0]") {
-                content: asdf ;
-            }
+          bus( x_if[0].y ) {
+          }
         }
     }
     """
