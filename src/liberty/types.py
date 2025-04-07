@@ -437,19 +437,20 @@ def select_timing_group(pin: Group,
 
     # Select by timing_type
     if timing_type is not None:
-        timing_groups = [g
+        timing_groups_selected = [g
                          for g in timing_groups
                          if 'timing_type' in g
                          and g['timing_type'] == timing_type
                          ]
-        if not timing_groups:
+        if not timing_groups_selected:
             # Notify the user what `timing_type`s could have been chosen.
             raise KeyError(("No timing group found. `timing_type` must be one of: {}".
                 format(sorted(list({
-                g['timing_type'].value
+                unwrap_escaped_string(g['timing_type'])
                 for g in timing_groups
             })))
             ))
+        timing_groups = timing_groups_selected
 
     timing_group = timing_groups[0]
     return timing_group

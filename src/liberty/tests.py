@@ -6,7 +6,7 @@ from .parser import parse_liberty
 from .types import *
 
 
-def test_select_timing_group():
+def test_select_timing_group_1():
     data = r"""
 pin(Y){ 
     timing() {
@@ -81,7 +81,7 @@ def test_replace_array():
     assert (group.get_array("myArray") == [1, 2, 3]).all()
 
 
-def test_select_timing_group():
+def test_select_timing_group_by_timing_type():
     """
     Select timing groups by their `timing_type` attribute.
 
@@ -98,6 +98,10 @@ def test_select_timing_group():
                 related_pin : "CLK";
                 timing_type : setup_falling;
             }
+            timing() {
+                related_pin : "CLK";
+                timing_type : "fantasy_escaped_string";
+            }
         }    
     """
 
@@ -112,6 +116,15 @@ def test_select_timing_group():
     timing_setup_falling = select_timing_group(pin, related_pin = "CLK", timing_type = "setup_falling")
     assert isinstance(timing_setup_falling, Group)
     assert timing_setup_falling.get_attribute("timing_type") == "setup_falling"
+
+    # Test if timing type is escaped.
+    should_not_fail = select_timing_group(pin, related_pin = "CLK", timing_type = "fantasy_escaped_string")
+    
+    try:
+        should_fail = select_timing_group(pin, related_pin = "CLK", timing_type = "doesnotexist")
+    except Exception as e:
+        # Error message should hint to existing timing types.
+        assert "hold_falling" in str(e)
     
 
 
