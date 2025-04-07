@@ -396,6 +396,9 @@ def select_timing_group(pin: Group,
     assert isinstance(pin, Group)
     assert pin.group_name == 'pin', "`pin` must be a pin-group but is '{}'".format(pin.group_name)
 
+    if when is not None:
+        when = parse_boolean_function(when)
+        
     def unwrap_escaped_string(s):
         if isinstance(s, EscapedString):
             return s.value
@@ -420,12 +423,21 @@ def select_timing_group(pin: Group,
 
     # Select by `when`.
     if when is not None:
-        timing_groups = [g
+
+        def expr_equal(a, reference) -> str:
+            """
+            Test if the two expressions are equal.
+            """
+            a = unwrap_escaped_string(a)
+            a = parse_boolean_function(a)
+            return a == reference
+            
+        timing_groups_selected = [g
                          for g in timing_groups
                          if 'when' in g
-                         and unwrap_escaped_string(g['when']) == when # TODO: compare equivalence of Boolean expression, not string equivalence
+                         and expr_equal(g['when'], when)
                          ]
-        if not timing_groups:
+        if not timing_groups_selected:
             # Notify the user what `related_pin`s could have been chosen.
             raise KeyError(("No timing group found. `when` must be one of: {}".
                 format(sorted(list({
@@ -434,6 +446,7 @@ def select_timing_group(pin: Group,
                 if 'when' in g
             })))
             ))
+        timing_groups = timing_groups_selected
 
     # Select by timing_type
     if timing_type is not None:

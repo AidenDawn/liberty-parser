@@ -12,7 +12,7 @@ pin(Y){
     timing() {
         test_label: 1;
         related_pin: "A";
-        when: "B";
+        when: "A & B";
         cell_rise() {
             test_label: 11;
         }
@@ -41,7 +41,7 @@ pin(Y){
     timing_group = select_timing_group(pin_group, related_pin="A")
     assert timing_group['test_label'] == 1
 
-    timing_group = select_timing_group(pin_group, related_pin="A", when='B')
+    timing_group = select_timing_group(pin_group, related_pin="A", when='B & A') # Note: A and B are swapped in `when` expression.
     assert timing_group['test_label'] == 1
 
     timing_group = select_timing_group(pin_group, related_pin="A", when='!B')
