@@ -86,7 +86,7 @@ def read_liberty_chars(chars: Iterable) -> List[Group]:
 
     
 
-def __read_liberty_impl(chars) -> List[Group]:
+def __read_liberty_impl(chars, strict: bool = False) -> List[Group]:
     assert isinstance(chars, Iterable)
     tk = tokenize(chars, LibertyLexer())
     tk.advance()
@@ -94,7 +94,7 @@ def __read_liberty_impl(chars) -> List[Group]:
     groups = []
     
     while True:
-        item = __read_group_item(tk)
+        item = __read_group_item(tk, strict=strict)
         if not isinstance(item, Group):
             raise LibertyParserError("library must start with a group but found:", type(item))
         groups.append(item)
@@ -105,7 +105,7 @@ def __read_liberty_impl(chars) -> List[Group]:
 
     return groups
 
-def __read_group_item(tk: Tokenized):
+def __read_group_item(tk: Tokenized, strict: bool = False):
     assert isinstance(tk, Tokenized)
 
     name = tk.take_str()
@@ -131,7 +131,7 @@ def __read_group_item(tk: Tokenized):
 
             while not tk.test_str("}"):
                 # Recursively read group items.
-                item = __read_group_item(tk)
+                item = __read_group_item(tk, strict=strict)
                 if isinstance(item, Group):
                     group.groups.append(item)
                 elif isinstance(item, Attribute):
@@ -141,6 +141,9 @@ def __read_group_item(tk: Tokenized):
                 else:
                     assert False, "unexpected type"
 
+            if not strict:
+                tk.test_str(";")
+                
             return group
         else:
             # It's a complex attribute or define statement.

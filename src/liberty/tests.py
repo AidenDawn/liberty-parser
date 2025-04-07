@@ -230,3 +230,17 @@ def test_without_space_after_colon():
 #    group = parse_liberty(data)
 #    assert isinstance(group, Group)
 
+def test_semicolon_after_group():
+    """
+    See https://codeberg.org/tok/liberty-parser/issues/24
+    """
+
+    data = r"""
+ group( ) {
+     inner1() {};
+     inner2() {}
+ };
+    """
+    
+    group = parse_liberty(data)
+    assert isinstance(group, Group)

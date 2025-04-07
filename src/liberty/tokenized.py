@@ -112,12 +112,9 @@ class Tokenized:
         assert isinstance(expected, list)
         
         if self.current_token:
-            if self.current_token == expected:
-                return True
-            else:
-                return False
+            return self.current_token == expected
         else:
-            raise UnexpectedEndOfFile()
+            return False
         
     def peeking_test_str(self, expected):
         return self.peeking_test(list(expected))
