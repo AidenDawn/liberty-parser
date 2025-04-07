@@ -27,8 +27,8 @@ pin(Y){
     }
     timing() {
         test_label: 3;
-        related_pin: "B";
-        when: "A";
+        related_pin: B; // Unescaped string
+        when: A; // Unescaped string
         cell_rise() {
             test_label: 31;
         }
@@ -51,6 +51,8 @@ pin(Y){
     assert timing_group['test_label'] == 3
 
     assert select_timing_table(pin_group, related_pin="A", when='!B', table_name='cell_rise')['test_label'] == 21
+    # Test with unescaped strings.
+    assert select_timing_table(pin_group, related_pin="B", when='A', table_name='cell_rise')['test_label'] == 31
 
 def test_replace_array():
     """
