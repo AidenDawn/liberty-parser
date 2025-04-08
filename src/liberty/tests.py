@@ -244,3 +244,17 @@ def test_semicolon_after_group():
     
     group = parse_liberty(data)
     assert isinstance(group, Group)
+
+def test_empty_escaped_string():
+    """
+    See https://codeberg.org/tok/liberty-parser/issues/25
+    """
+
+    data = r"""
+    group() {
+        comment: "";
+    }
+"""
+    group = parse_liberty(data)
+    assert isinstance(group, Group)
+    assert group["comment"] == EscapedString("")

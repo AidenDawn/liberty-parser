@@ -149,24 +149,14 @@ class LibertyLexer:
     def _read_quoted_string(self, quote_char, output_fn, iter):
         output_fn(quote_char)
       
+        prev = None
         while True:
             c = next(iter)
-            if c != '\\':
+            output_fn(c)
+            if prev != '\\' and c == quote_char:
                 # Abort on umasked quote char.
-                output_fn(c)
-                if iter.peek() == quote_char:
-                    # Reached closing quote char.
-                    next(iter)
-                    output_fn(quote_char)
-                    break
-            if c == '\\':
-                if iter.peek() == '\\':
-                    output_fn('\\')
-                    next(iter)
-                else:
-                    output_fn(c)
+                break
             prev = c
-                
     
     def _read_normal_token(self, first_char, output_fn, iter):
         output_fn(first_char)
