@@ -38,6 +38,9 @@ class _LibertyBuilder:
         self._skip: int = 0
 
     def open_group(self, name: str, args: List):
+        if self.skip_group():
+            self._skip += 1
+            return
         if len(self._group_stack) == 1:
             # library level
             if name == "cell" and len(args) > 0:
@@ -67,6 +70,7 @@ class _LibertyBuilder:
         return self._skip > 0
 
     def close_group(self):
+        print(self._skip)
         if self.skip_group():
             self._skip -= 1
             return
@@ -867,7 +871,14 @@ def test_cell_filter():
     data = r"""
         library () {
 
-        cell (skipme1) {}
+        cell (skipme1) {
+            value: 1;
+            subgroup() {
+                subsubgroup() {
+                    value: 2;
+                }
+            }
+        }
 
         cell (INVX1) {}
 
