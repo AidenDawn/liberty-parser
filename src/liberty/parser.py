@@ -594,6 +594,18 @@ def test_parse_liberty_freepdk():
     array = timing_y_a.get_group('cell_rise').get_array('values')
     assert array.shape == (6, 6)
 
+def test_parse_and_filter_liberty_freepdk():
+    import os.path
+    lib_file = os.path.join(os.path.dirname(__file__), '../../test_data/gscl45nm.lib')
+
+    data = open(lib_file).read()
+
+    parser = LibertyParser()
+    parser.set_cell_name_filter(lambda name: name == 'INVX1')
+    filtered_library = parser.parse_liberty(data)
+    assert isinstance(filtered_library, Group)
+    assert len([g for g in filtered_library.groups if g.group_name == 'cell']) == 1
+    
 def test_parse_liberty_openram():
     import os.path
     lib_file = os.path.join(os.path.dirname(__file__), '../../test_data/openram_sram_16x8_FF.lib')
