@@ -5,6 +5,7 @@
 
 from .types import *
 from .tokenized import *
+from typing import *
 
 class LibertyParserError(ParserError):
     pass
@@ -25,6 +26,135 @@ class ExceptionWithLineNum(LibertyParserError):
     def __str__(self):
         return f"Error on line {self.line_num}, position {self.char_num}: {self.e}"
 
+class _LibertyBuilder:
+    """
+    Construct liberty data structures while the parser encounters them.
+    """
+
+    def __init__(self):
+        self._finished_groups: List[Group] = []
+        self._group_stack: List[Group] = []
+        self._cell_filter_fn: Callable[str, bool] = lambda name: True
+        self._skip: int = 0
+
+    def open_group(self, name: str, args: List):
+        if len(self._group_stack) == 1:
+            # library level
+            if name == "cell" and len(args) > 0:
+                if not self._cell_filter_fn(args[0]):
+                    self._skip += 1
+        if self.skip_group():
+            return
+        self._group_stack.append(Group(name, args))
+
+    def push_group_item(self, item: Union[Group, Attribute, Define]):
+        if self.skip_group():
+            return
+        group = self._group_stack[-1]
+        if isinstance(item, Group):
+            group.groups.append(item)
+        elif isinstance(item, Attribute):
+            group.attributes.append(item)
+        elif isinstance(item, Define):
+            group.defines.append(item)
+        else:
+            assert False, "unexpected type"
+
+    def skip_group(self) -> bool:
+        """
+        Instruct the parser to skip through content of group without creating data structures.
+        """
+        return self._skip > 0
+
+    def close_group(self):
+        if self.skip_group():
+            self._skip -= 1
+            return
+        g = self._group_stack.pop()
+        if self._group_stack:
+            self._group_stack[-1].groups.append(g)
+        else:
+            self._finished_groups.append(g)
+    
+class LibertyParser:
+
+    def __init__(self):
+        self.strict: bool = False
+        """
+        Be more strict and don't allow certain format variants which are not in line with the liberty reference manual.
+        """
+
+        self._cell_filter_fn = lambda name: True
+
+    def set_cell_name_filter(self, take_cell_group_fn: Callable[str, bool]):
+        """
+        Decide wether to use or skip a cell group based on the cell name.
+
+        Example: `parser.set_cell_name_filter(lambda name: name == 'INVX1')`
+        """
+        assert isinstance(take_cell_group_fn, Callable)
+        self._cell_filter_fn = take_cell_group_fn
+
+    def parse_liberty(self, data: str) -> Group:
+        """
+        Parse a string containing data of a liberty file.
+        The liberty string must contain exactly one top library. If more than one top
+        should be supported then `parse_multi_liberty()` should be used instead.
+
+        :param data: Raw liberty string.
+        :return: `Group` object of library.
+        """
+        top_groups = self.parse_multi_liberty(data)
+
+        if len(top_groups) == 1:
+            return top_groups[0]
+        else:
+            raise LibertyParserError("Liberty does not contain exactly one top group. Use `parse_multi_liberty()` instead.")
+
+    def parse_multi_liberty(self, data: str) -> List[Group]:
+        """
+        Parse a string containing data of a liberty file.
+        The liberty file may contain many top-level libraries.
+        :param data: Raw liberty string.
+        :return: List of `Group` objects.
+        """
+        library = self.read_liberty_chars(iter(data))
+        return library
+
+    def read_liberty_chars(self, chars: Iterable) -> List[Group]:
+        """
+        Parse liberty libraries from an iterator over characters.
+        """
+        assert isinstance(chars, Iterable)
+    
+        class CountLines:
+            def __init__(self, iter):
+                self.iter = iter
+                self.line_num = 0
+                self.char_num = 0 # Position on the line.
+    
+            def __iter__(self):
+                return self
+            
+            def __next__(self):
+                c = next(self.iter)
+                self.char_num += 1
+                if c == "\n":
+                    self.line_num += 1
+                    self.char_num = 0
+                return c
+    
+        counted = CountLines(chars)
+        
+        try:
+            result = _read_liberty_impl(counted, strict=self.strict, cell_filter_fn=self._cell_filter_fn)
+        except Exception as e:
+            raise ExceptionWithLineNum(e, counted.line_num, counted.char_num)
+        
+        return result
+
+
+
 def parse_liberty(data: str) -> Group:
     """
     Parse a string containing data of a liberty file.
@@ -34,12 +164,8 @@ def parse_liberty(data: str) -> Group:
     :param data: Raw liberty string.
     :return: `Group` object of library.
     """
-    top_groups = parse_multi_liberty(data)
-
-    if len(top_groups) == 1:
-        return top_groups[0]
-    else:
-        raise LibertyParserError("Liberty does not contain exactly one top group. Use `parse_multi_liberty()` instead.")
+    p = LibertyParser()
+    return p.parse_liberty(data)
 
 
 def parse_multi_liberty(data: str) -> List[Group]:
@@ -49,44 +175,22 @@ def parse_multi_liberty(data: str) -> List[Group]:
     :param data: Raw liberty string.
     :return: List of `Group` objects.
     """
-    library = read_liberty_chars(iter(data))
-    return library
+    p = LibertyParser()
+    return p.parse_multi_liberty(data)
 
 def read_liberty_chars(chars: Iterable) -> List[Group]:
     """
     Parse liberty libraries from an iterator over characters.
     """
-    assert isinstance(chars, Iterable)
+    p = LibertyParser()
+    return p.read_liberty_chars(chars)
 
-    class CountLines:
-        def __init__(self, iter):
-            self.iter = iter
-            self.line_num = 0
-            self.char_num = 0 # Position on the line.
 
-        def __iter__(self):
-            return self
-        
-        def __next__(self):
-            c = next(self.iter)
-            self.char_num += 1
-            if c == "\n":
-                self.line_num += 1
-                self.char_num = 0
-            return c
-
-    counted = CountLines(chars)
-    
-    try:
-        result = __read_liberty_impl(counted)
-    except Exception as e:
-        raise ExceptionWithLineNum(e, counted.line_num, counted.char_num)
-    
-    return result
-
-    
-
-def __read_liberty_impl(chars, strict: bool = False) -> List[Group]:
+def _read_liberty_impl(
+        chars: Iterable, 
+        strict: bool = False, 
+        cell_filter_fn: Callable[str, bool] = lambda name: True
+    ) -> List[Group]:
     assert isinstance(chars, Iterable)
     tk = tokenize(chars, LibertyLexer())
     tk.advance()
@@ -94,7 +198,11 @@ def __read_liberty_impl(chars, strict: bool = False) -> List[Group]:
     groups = []
     
     while True:
-        item = __read_group_item(tk, strict=strict)
+        builder = _LibertyBuilder()
+        builder._cell_filter_fn = cell_filter_fn
+        __read_group_item(builder, tk, strict=strict)
+        assert len(builder._finished_groups) == 1
+        item = builder._finished_groups[0]
         if not isinstance(item, Group):
             raise LibertyParserError("library must start with a group but found:", type(item))
         groups.append(item)
@@ -105,18 +213,19 @@ def __read_liberty_impl(chars, strict: bool = False) -> List[Group]:
 
     return groups
 
-def __read_group_item(tk: Tokenized, strict: bool = False):
+def __read_group_item(builder: _LibertyBuilder, tk: Tokenized, strict: bool = False):
     assert isinstance(tk, Tokenized)
+    assert isinstance(builder, _LibertyBuilder)
 
     name = tk.take_str()
 
     if tk.peeking_test_str("("):
+        args = []
         # Allow ':' in tokens.
         tk.lexer.disable_terminal_char(':')
         try:
             tk.advance()
             # Group or complex attribute.
-            args = []
             while not tk.test_str(")"):
                 args.append(__read_value(tk))
                 if not tk.peeking_test_str(")"):
@@ -127,27 +236,22 @@ def __read_group_item(tk: Tokenized, strict: bool = False):
         if tk.test_str("{"):
             # It's a group.
 
-            group = Group(name, args)
+            builder.open_group(name, args)
 
             while not tk.test_str("}"):
                 # Recursively read group items.
-                item = __read_group_item(tk, strict=strict)
-                if isinstance(item, Group):
-                    group.groups.append(item)
-                elif isinstance(item, Attribute):
-                    group.attributes.append(item)
-                elif isinstance(item, Define):
-                    group.defines.append(item)
-                else:
-                    assert False, "unexpected type"
+                __read_group_item(builder, tk, strict=strict)
+
+            builder.close_group()
 
             if not strict:
                 tk.test_str(";")
-                
-            return group
         else:
             # It's a complex attribute or define statement.
             tk.test_str(";") # Consume optional trailing semicolon.
+            if builder.skip_group():
+                return
+
             if name == "define" and len(args) == 3:
                 # Define statement
 
@@ -163,10 +267,14 @@ def __read_group_item(tk: Tokenized, strict: bool = False):
 
                 attribute_name, group_name, attr_type = strings
                 
-                return Define(attribute_name, group_name, attr_type)
+                builder.push_group_item(
+                    Define(attribute_name, group_name, attr_type)
+                )
             else:
                 # It's a complex attribute
-                return Attribute(name, args)
+                builder.push_group_item(
+                    Attribute(name, args)
+                )
     elif tk.test_str(":"):
         # Simple attribute.
         value = __read_value(tk)
@@ -178,11 +286,15 @@ def __read_group_item(tk: Tokenized, strict: bool = False):
 
             while not tk.test_str(";"):
                 expr.append(tk.take_str())
-            
-            return Attribute(name, ArithExpression(" ".join(expr)))
+
+            builder.push_group_item(
+                Attribute(name, ArithExpression(" ".join(expr)))
+            )
         else:
             tk.test_str(";") # Read optional semicolon
-            return Attribute(name, value)
+            builder.push_group_item(
+                Attribute(name, value)
+            )
     else:
         raise UnexpectedToken("'(' | ':'", tk.current_token_str())
 
@@ -746,3 +858,39 @@ def test_invalid_bus_pins():
         error = e
 
     assert error is not None
+
+def test_cell_filter():
+
+    def filter(name: str) -> bool:
+        return name in ["INVX1"]
+    
+    data = r"""
+        library () {
+
+        cell (skipme1) {}
+
+        cell (INVX1) {}
+
+        cell (skipme2) {}
+    }
+    """
+
+    parser = LibertyParser()
+    parser.set_cell_name_filter(filter)
+    group = parser.parse_liberty(data)
+    assert len(group.groups) == 1
+    
+def test_cell_filter_takes_none():
+    
+    data = r"""
+        library () {
+
+        cell (INVX1) {}
+    }
+    """
+
+    parser = LibertyParser()
+    parser.set_cell_name_filter(lambda name: False) # Drop all cells
+    group = parser.parse_liberty(data)
+    assert len(group.groups) == 0
+
