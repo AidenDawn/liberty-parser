@@ -70,7 +70,6 @@ class _LibertyBuilder:
         return self._skip > 0
 
     def close_group(self):
-        print(self._skip)
         if self.skip_group():
             self._skip -= 1
             return
