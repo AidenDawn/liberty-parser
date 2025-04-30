@@ -1,0 +1,5 @@
+version = 1
+SPDX-PackageName = "liberty-parser"
+SPDX-PackageSupplier = "Thomas Kramer <code@tkramer.ch>"
+SPDX-PackageDownloadLocation = "https://codeberg.org/tok/liberty-parser"
+annotations = []
