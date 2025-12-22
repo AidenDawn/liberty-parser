@@ -24,7 +24,7 @@ class ExceptionWithLineNum(LibertyParserError):
         self.char_num = char_num
 
     def __str__(self):
-        return f"Error on line {self.line_num}, position {self.char_num}: {self.e}"
+        return f"Error on line {self.line_num}, position {self.char_num}: {self.e.__repr__()}"
 
 class _LibertyBuilder:
     """
