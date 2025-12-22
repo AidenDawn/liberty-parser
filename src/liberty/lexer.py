@@ -46,7 +46,7 @@ def test_peekable_iter():
 class LibertyLexer:
 
     def __init__(self):
-        self.default_terminal_chars = bytearray(b',{}()[];/*:')
+        self.default_terminal_chars = bytearray(b',{}()[];*:')
         self.set_default_terminal_chars()
 
     def set_default_terminal_chars(self):
@@ -211,6 +211,7 @@ def test_read_tokens():
      library (library_name){
         var1 : "quoted_string1";
         var2 : 'quoted_string2';
+        var3 : with\backslash;
       // single line comment 2
 
     /**/
@@ -248,6 +249,7 @@ def test_read_tokens():
         "library", "(", "library_name", ")", "{",
          "var1", ":", '"quoted_string1"', ";",
          "var2", ":", "'quoted_string2'", ";",
+         "var3", ":", "with\\backslash", ";",
          "}"
     ]
 

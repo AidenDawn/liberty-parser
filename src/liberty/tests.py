@@ -258,3 +258,15 @@ def test_empty_escaped_string():
     group = parse_liberty(data)
     assert isinstance(group, Group)
     assert group["comment"] == EscapedString("")
+
+def test_issue50_pin_name_with_slash():
+
+    data ="""library (mylib){
+    cell (mycell){
+        pinname : a/b ;
+    }
+}
+    """
+
+    group = parse_liberty(data)
+    assert isinstance(group, Group)
