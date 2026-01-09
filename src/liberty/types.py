@@ -116,11 +116,21 @@ class Group:
         :return: A list of lines.
         """
 
-        def format_value(v) -> str:
+        def format_value(v: Any) -> str:
             if v is None:
                 return ''
+            # Liberty expects lowercase unquoted booleans
             if isinstance(v, bool):
                 return "true" if v else "false"
+            # EscapedString already formats with quotes
+            if isinstance(v, EscapedString):
+                return str(v)
+            # WithUnit and numeric types
+            if isinstance(v, WithUnit):
+                return str(v)
+            if isinstance(v, (int, float)):
+                return str(v)
+            # Strings (raw arg names) should be used as-is
             return str(v)
 
         define_lines = list()
