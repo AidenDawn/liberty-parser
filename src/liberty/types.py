@@ -152,8 +152,15 @@ class Group:
                 values = format_value(attr_value)
                 attr_lines.append("{} : {};".format(attr_name, values))
 
+        header = "{} ({})".format(self.group_name, ", ".join([format_value(f) for f in self.args]))
+        
+        # Check if the group is empty (no defines, no attributes, no nested groups)
+        if not define_lines and not attr_lines and not sub_group_lines:
+            return ["{} ;".format(header)]
+        
+        # Original logic for groups with content
         lines = list()
-        lines.append("{} ({}) {{".format(self.group_name, ", ".join([format_value(f) for f in self.args])))
+        lines.append("{} {{".format(header))
 
         for l in chain(define_lines, attr_lines, *sub_group_lines):
             lines.append(indent + l)
