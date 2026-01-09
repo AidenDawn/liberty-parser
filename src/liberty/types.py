@@ -119,6 +119,8 @@ class Group:
         def format_value(v) -> str:
             if v is None:
                 return ''
+            if isinstance(v, bool):
+                return "true" if v else "false"
             return str(v)
 
         define_lines = list()
