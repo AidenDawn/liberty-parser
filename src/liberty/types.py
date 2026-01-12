@@ -298,7 +298,7 @@ class WithUnit:
         self.unit = unit
 
     def __str__(self):
-        return "{}{}".format(self.value, self.unit)
+        return "{}, {}".format(self.value, self.unit)
 
     def __repr__(self):
         return str(self)
